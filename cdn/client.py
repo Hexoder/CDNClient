@@ -7,7 +7,8 @@ from google.protobuf.json_format import MessageToDict
 from django.conf import settings
 import tempfile
 
-def get_secure_channel():
+
+def get_secure_channel(server_domain):
     cert_path = Path(__file__).parent / "cert" / "fullchain.pem"
     # Load server certificate
     with open(cert_path, "rb") as f:
@@ -17,7 +18,8 @@ def get_secure_channel():
     credentials = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
 
     # Create a secure channel
-    return grpc.secure_channel("api.oxalisys.com:50051", credentials)
+    return grpc.secure_channel(f"{server_domain}:50051", credentials)
+
 
 class CDNClient:
     _instance = None
@@ -31,13 +33,11 @@ class CDNClient:
             if cls._instance is None:
                 cls._instance = super(CDNClient, cls).__new__(cls)
 
-                cls._instance.channel = get_secure_channel()
+                cls._instance.channel = get_secure_channel(server_address)
                 cls._instance.stub = cdn_pb2_grpc.CDNServiceStub(cls._instance.channel)
-
 
                 # cls._instance.channel = grpc.insecure_channel(server_address)
                 # cls._instance.stub = cdn_pb2_grpc.CDNServiceStub(cls._instance.channel)
-
 
         return cls._instance
 
@@ -94,5 +94,3 @@ class CDNClient:
         request = cdn_pb2.FileDeleteRequest(uuid=uuid, hard_delete=hard_delete)
         result = self.stub.DeleteFile(request)
         return MessageToDict(result)
-
-
