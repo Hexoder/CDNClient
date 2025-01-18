@@ -9,7 +9,8 @@ import tempfile
 
 
 def get_secure_channel(server_domain):
-    cert_path = Path(__file__).parent / "cert" / "fullchain.pem"
+    cert_path = settings.CERT_FILE_PATH
+    cert_path = Path(settings.CERT_FILE_PATH)
     # Load server certificate
     with open(cert_path, "rb") as f:
         trusted_certs = f.read()
