@@ -82,11 +82,17 @@ class File(models.Model):
             return result
 
     def get_file(self, output_path: Path = None) -> str:
+        if self.last_temp_path and Path(self.last_temp_path).exists():
+            return self.last_temp_path
+        else:
+            self.last_temp_path = None
+
         if output_path:
             output_path = output_path / self.name
         client = CDNClient()
         result = client.download_file(str(self.uuid), output_file_path=output_path, file_name=self.name)
-        self.temp_path = result
+        self.last_temp_path = result
+        self.save(update_fields=['last_temp_path'])
         return result
 
     def delete(self, using=None, keep_parents=False, hard_delete=False):
