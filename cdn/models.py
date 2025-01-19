@@ -17,11 +17,11 @@ User = get_user_model()
 
 class File(models.Model):
     uuid = models.UUIDField(null=True, blank=True, unique=True, editable=False)
-    name = models.CharField(max_length=64)
+    name = models.CharField(max_length=128)
     size = models.FloatField(null=True, blank=True)
-    type = models.CharField(max_length=10)
+    type = models.CharField(max_length=256)
     version = models.TextField(null=True, blank=True)
-    url = models.URLField(max_length=128, null=True, blank=True)
+    url = models.URLField(max_length=256, null=True, blank=True)
     user = models.ForeignKey(User, related_name='cdn_files', on_delete=models.DO_NOTHING)
     is_assigned = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -31,7 +31,7 @@ class File(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
-    last_temp_path = models.CharField(max_length=100, null=True, blank=True)
+    last_temp_path = models.CharField(max_length=128, null=True, blank=True)
 
     objects = SoftDeleteManager()
 
