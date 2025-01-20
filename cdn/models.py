@@ -10,7 +10,7 @@ from django.apps import apps
 
 from .client import CDNClient
 from .managers import SoftDeleteManager
-from .utils import get_project_name
+from .utils import get_project_name, generate_path
 
 User = get_user_model()
 
@@ -61,8 +61,9 @@ class File(models.Model):
             using=using,
             # update_fields=list(update_fields)
         )
+        self.assign_to_model(self.content_object)
 
-    def assign_to_path(self, path: str, service_name: str, app_name: str, model_name: str):
+    def assign_to_path(self, path: str, service_name: str, app_name: str, model_name: str, model_pk:int):
         client = CDNClient()
         result = client.set_to_path(str(self.uuid), path, service_name, app_name, model_name)
 
@@ -73,7 +74,21 @@ class File(models.Model):
             print(self.url)
             self.is_assigned = True
             self.save(update_fields=['is_assigned', 'file', 'uuid', 'version'])
-            return result
+            print(result)
+
+    def assign_to_model(self, model):
+
+        service_name, app_name, model_name, model_pk, path = generate_path(model)
+
+        self.assign_to_path(
+            path=str(path),
+            service_name=service_name,
+            app_name=app_name,
+            model_name=model_name,
+            model_pk=model_pk
+        )
+
+
 
     def get_metadata(self):
         client = CDNClient()
@@ -137,28 +152,26 @@ class FileAssociationMixin:
         super().__init_subclass__(**kwargs)
         class_prepared.connect(cls.handle_class_prepared, sender=cls)
 
-    def add_file(self, uuid):  # requested_user
+    def add_file(self, cdn_file_uuid):  # requested_user
         from pathlib import Path  # Ensure it's imported locally
         # Ensure that _meta and app_label are accessible
         if not hasattr(self.__class__, '_meta'):
             raise TypeError("FileAssociationMixin can only be used with Django model classes.")
 
-        app_name = self.__class__._meta.app_label.lower()
-        service_name = get_project_name().lower()
-        model_name = self.__class__.__name__.lower()
-        path = Path(service_name) / app_name / model_name
+        service_name, app_name, model_name, model_pk, path = generate_path(self)
 
         # Fetch the user and associate the file
         u1 = User.objects.get(id=1)  # Replace this with your user-fetching logic
-        file = File.objects.create(uuid=uuid, user=u1, content_object=self)
-        result = file.assign_to_path(
-            path=str(path),
-            service_name=service_name,
-            app_name=app_name,
-            model_name=model_name,
-        )
-
-        return result
+        File.objects.create(uuid=cdn_file_uuid, user=u1, content_object=self)
+        # result = file.assign_to_path(
+        #     path=str(path),
+        #     service_name=service_name,
+        #     app_name=app_name,
+        #     model_name=model_name,
+        #     model_pk=model_pk
+        # )
+        #
+        # return result
 
     def delete_file(self, uuid: str, hard_delete: bool = False):
         try:
