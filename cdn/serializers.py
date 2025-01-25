@@ -28,9 +28,10 @@ class AddFileSerializer(serializers.Serializer):
         Save the file for the provided instance.
         """
         uuid = self.validated_data['uuid']
+        requested_user = self.context.get('request').user
 
         # Call the instance's `add_file` method
-        instance.add_file(uuid=uuid)
+        instance.add_file(uuid=uuid, requested_user_id=requested_user.id)
 
         # Optionally, return some response data
         return {"detail": f"File with UUID {uuid} added successfully."}

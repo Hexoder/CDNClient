@@ -48,12 +48,12 @@ class CDNClient:
     def __exit__(self, exc_type, exc_value, traceback):
         self.channel.close()
 
-    def get_file_metadata(self, uuid: str):
+    def get_file_metadata(self, uuid: str) -> dict:
         request = cdn_pb2.FileRequest(uuid=uuid)
         result = self.stub.GetFileMetadata(request)
         return MessageToDict(result)
 
-    def download_file(self, uuid: str, output_file_path: str = None, file_name: str = None):
+    def download_file(self, uuid: str, output_file_path: str = None, file_name: str = None) -> dict:
         request = cdn_pb2.FileRequest(uuid=uuid)
 
         if not output_file_path:
@@ -80,23 +80,23 @@ class CDNClient:
             print(f"File downloaded to {output_file_path}")
             return output_file_path
 
-    def check_file_status(self, uuid: str):
+    def check_file_status(self, uuid: str) -> dict:
         request = cdn_pb2.FileRequest(uuid=uuid)
         result = self.stub.GetFileStatus(request)
         return MessageToDict(result)
 
-    def set_to_path(self, uuid: str, path: str, service_name: str, app_name: str, model_name: str):
+    def set_to_path(self, uuid: str, path: str, service_name: str, app_name: str, model_name: str) -> dict:
         request = cdn_pb2.SetToPathRequest(uuid=uuid, path=path, service_name=service_name,
                                            app_name=app_name, model_name=model_name)
         result = self.stub.SetToPath(request)
         return MessageToDict(result)
 
-    def delete_file(self, uuid: str, hard_delete: bool = True):
+    def delete_file(self, uuid: str, hard_delete: bool = True) -> dict:
         request = cdn_pb2.FileDeleteRequest(uuid=uuid, hard_delete=hard_delete)
         result = self.stub.DeleteFile(request)
         return MessageToDict(result)
 
-    def upload_file(self, file:bytes, file_name, service_name, app_name, model_name):
+    def upload_file(self, file:bytes, file_name:str, service_name:str, app_name:str, model_name:str) -> dict:
 
         request = cdn_pb2.File(file=file, file_name=file_name, service_name=service_name, app_name=app_name, model_name=model_name)
         result = self.stub.UploadFile(request)

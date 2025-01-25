@@ -1,4 +1,5 @@
 from pathlib import Path
+from sys import getsizeof
 
 from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -34,17 +35,19 @@ class File(models.Model):
     last_temp_path = models.CharField(max_length=128, null=True, blank=True)
 
     objects = SoftDeleteManager()
+    @property
+    def client(self):
+        return CDNClient()
 
     def save(self, *args, force_insert=False, force_update=False, using=None, update_fields=None, direct_upload:bool=False):
         created = self.pk is None
         if created and not direct_upload:
 
-            client = CDNClient()
 
-            result = client.check_file_status(uuid=str(self.uuid))
+            result = self.client.check_file_status(uuid=str(self.uuid))
             if not result["isAvailable"]:
                 raise Exception("File Not Found!")
-            meta_data = client.get_file_metadata(uuid=str(self.uuid))
+            meta_data = self.client.get_file_metadata(uuid=str(self.uuid))
 
             file_user = User.objects.get(id=int(meta_data['userId']))
             if self.user.id != file_user.id:
@@ -60,12 +63,11 @@ class File(models.Model):
             force_update=force_update,
             using=using,
         )
-        if created:
+        if created and not direct_upload:
             self.assign_to_model()
 
     def assign_to_path(self, path: str, service_name: str, app_name: str, model_name: str, model_pk:int):
-        client = CDNClient()
-        result = client.set_to_path(str(self.uuid), path, service_name, app_name, model_name)
+        result = self.client.set_to_path(str(self.uuid), path, service_name, app_name, model_name)
 
         if result:
             self.url = result.get('newUrl')
@@ -91,8 +93,7 @@ class File(models.Model):
 
 
     def get_metadata(self):
-        client = CDNClient()
-        result = client.get_file_metadata(str(self.uuid))
+        result = self.client.get_file_metadata(str(self.uuid))
         if result:
             return result
 
@@ -104,16 +105,14 @@ class File(models.Model):
 
         if output_path:
             output_path = output_path / self.name
-        client = CDNClient()
-        result = client.download_file(str(self.uuid), output_file_path=output_path, file_name=self.name)
+        result = self.client.download_file(str(self.uuid), output_file_path=output_path, file_name=self.name)
         self.last_temp_path = result
         self.save(update_fields=['last_temp_path'])
         return result
 
     def delete(self, using=None, keep_parents=False, hard_delete=False):
         self.deleted_at = timezone.now()
-        client = CDNClient()
-        result = client.delete_file(str(self.uuid), hard_delete=hard_delete)
+        result = self.client.delete_file(str(self.uuid), hard_delete=hard_delete)
         if not result['isDone']:
             raise Exception(f'failed to delete file, {result["message"]}')
         return self.save(update_fields=['deleted_at'])
@@ -123,6 +122,10 @@ class File(models.Model):
 
 
 class FileAssociationMixin:
+
+    @property
+    def client(self):
+        return CDNClient()
 
     @classmethod
     def _add_files_field(cls, model_cls):
@@ -152,18 +155,39 @@ class FileAssociationMixin:
         super().__init_subclass__(**kwargs)
         class_prepared.connect(cls.handle_class_prepared, sender=cls)
 
-    def add_file(self, cdn_file_uuid):  # requested_user
+    def add_file(self, cdn_file_uuid, requested_user_id:int):
         from pathlib import Path  # Ensure it's imported locally
         # Ensure that _meta and app_label are accessible
         if not hasattr(self.__class__, '_meta'):
             raise TypeError("FileAssociationMixin can only be used with Django model classes.")
 
-        service_name, app_name, model_name, model_pk, path = generate_path(self)
+        # service_name, app_name, model_name, model_pk, path = generate_path(self)
 
         # Fetch the user and associate the file
-        u1 = User.objects.get(id=1)  # Replace this with your user-fetching logic
-        file = File.objects.create(uuid=cdn_file_uuid, user=u1, content_object=self)
+        user = User.objects.get(id=requested_user_id)  # Replace this with your user-fetching logic
+        file = File.objects.create(uuid=cdn_file_uuid, user=user, content_object=self)
         return file
+
+    def upload_file(self, file:bytes, file_name:str):
+
+        # Ensure that _meta and app_label are accessible
+        if not hasattr(self.__class__, '_meta'):
+            raise TypeError("FileAssociationMixin can only be used with Django model classes.")
+
+        service_name, app_name, model_name, model_pk, path = generate_path(self)
+        result = self.client.upload_file(file=file,file_name=file_name, service_name=service_name, app_name=app_name,
+                                        model_name=model_name)
+        if not result:
+            raise Exception("Failed to upload file, try again!")
+        new_uuid = result.get('uuid')
+        url = Path(service_name) / app_name / model_name / file_name
+        local_file = File(uuid=new_uuid, name=file_name,size=getsizeof(file), type=file_name.split('.')[-1], url=url,
+                          is_assigned=True, content_object=self)
+        local_file.save(direct_upload=True)
+        return local_file
+
+
+
 
 
     def delete_file(self, uuid: str, hard_delete: bool = False):
