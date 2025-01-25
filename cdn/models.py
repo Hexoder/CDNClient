@@ -180,7 +180,7 @@ class FileAssociationMixin:
         if not result:
             raise Exception("Failed to upload file, try again!")
         new_uuid = result.get('uuid')
-        url = Path(service_name) / app_name / model_name / file_name
+        url = Path("media") / "uploads" /service_name/ app_name / model_name / file_name
         local_file = File(uuid=new_uuid, name=file_name,size=getsizeof(file), type=file_name.split('.')[-1], url=url,
                           is_assigned=True, content_object=self)
         local_file.save(direct_upload=True)
