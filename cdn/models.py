@@ -22,7 +22,7 @@ class File(models.Model):
     type = models.CharField(max_length=256)
     version = models.TextField(null=True, blank=True)
     url = models.URLField(max_length=256, null=True, blank=True)
-    user = models.ForeignKey(User, related_name='cdn_files', on_delete=models.DO_NOTHING)
+    user = models.ForeignKey(User, related_name='cdn_files', on_delete=models.DO_NOTHING, null=True, blank=True)
     is_assigned = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
@@ -35,9 +35,9 @@ class File(models.Model):
 
     objects = SoftDeleteManager()
 
-    def save(self, *args, force_insert=False, force_update=False, using=None, update_fields=None):
+    def save(self, *args, force_insert=False, force_update=False, using=None, update_fields=None, direct_upload:bool=False):
         created = self.pk is None
-        if created:
+        if created and not direct_upload:
 
             client = CDNClient()
 
@@ -59,9 +59,9 @@ class File(models.Model):
             force_insert=force_insert,
             force_update=force_update,
             using=using,
-            # update_fields=list(update_fields)
         )
-        self.assign_to_model(self.content_object)
+        if created:
+            self.assign_to_model()
 
     def assign_to_path(self, path: str, service_name: str, app_name: str, model_name: str, model_pk:int):
         client = CDNClient()
@@ -76,9 +76,9 @@ class File(models.Model):
             self.save(update_fields=['is_assigned', 'file', 'uuid', 'version'])
             print(result)
 
-    def assign_to_model(self, model):
+    def assign_to_model(self):
 
-        service_name, app_name, model_name, model_pk, path = generate_path(model)
+        service_name, app_name, model_name, model_pk, path = generate_path(self.content_object)
 
         self.assign_to_path(
             path=str(path),
@@ -162,16 +162,9 @@ class FileAssociationMixin:
 
         # Fetch the user and associate the file
         u1 = User.objects.get(id=1)  # Replace this with your user-fetching logic
-        File.objects.create(uuid=cdn_file_uuid, user=u1, content_object=self)
-        # result = file.assign_to_path(
-        #     path=str(path),
-        #     service_name=service_name,
-        #     app_name=app_name,
-        #     model_name=model_name,
-        #     model_pk=model_pk
-        # )
-        #
-        # return result
+        file = File.objects.create(uuid=cdn_file_uuid, user=u1, content_object=self)
+        return file
+
 
     def delete_file(self, uuid: str, hard_delete: bool = False):
         try:

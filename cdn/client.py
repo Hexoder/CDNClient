@@ -95,3 +95,9 @@ class CDNClient:
         request = cdn_pb2.FileDeleteRequest(uuid=uuid, hard_delete=hard_delete)
         result = self.stub.DeleteFile(request)
         return MessageToDict(result)
+
+    def upload_file(self, file:bytes, file_name, service_name, app_name, model_name):
+
+        request = cdn_pb2.File(file=file, file_name=file_name, service_name=service_name, app_name=app_name, model_name=model_name)
+        result = self.stub.UploadFile(request)
+        return MessageToDict(result)

@@ -15,7 +15,7 @@ class FileSerializerMixin:
         fields = super().get_fields()
 
         # Dynamically add the `files` field
-        fields['files'] = FileSerializer(many=True)
+        fields['files'] = FileSerializer(many=True, required=False)
 
         return fields
 

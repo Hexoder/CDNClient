@@ -60,6 +60,11 @@ class CDNServiceStub(object):
                 request_serializer=cdn__pb2.FileDeleteRequest.SerializeToString,
                 response_deserializer=cdn__pb2.FileDeleteResponse.FromString,
                 _registered_method=True)
+        self.UploadFile = channel.unary_unary(
+                '/cdn.CDNService/UploadFile',
+                request_serializer=cdn__pb2.File.SerializeToString,
+                response_deserializer=cdn__pb2.FileUploadResponse.FromString,
+                _registered_method=True)
 
 
 class CDNServiceServicer(object):
@@ -100,6 +105,12 @@ class CDNServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def UploadFile(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CDNServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -127,6 +138,11 @@ def add_CDNServiceServicer_to_server(servicer, server):
                     servicer.DeleteFile,
                     request_deserializer=cdn__pb2.FileDeleteRequest.FromString,
                     response_serializer=cdn__pb2.FileDeleteResponse.SerializeToString,
+            ),
+            'UploadFile': grpc.unary_unary_rpc_method_handler(
+                    servicer.UploadFile,
+                    request_deserializer=cdn__pb2.File.FromString,
+                    response_serializer=cdn__pb2.FileUploadResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -265,6 +281,33 @@ class CDNService(object):
             '/cdn.CDNService/DeleteFile',
             cdn__pb2.FileDeleteRequest.SerializeToString,
             cdn__pb2.FileDeleteResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UploadFile(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/cdn.CDNService/UploadFile',
+            cdn__pb2.File.SerializeToString,
+            cdn__pb2.FileUploadResponse.FromString,
             options,
             channel_credentials,
             insecure,
