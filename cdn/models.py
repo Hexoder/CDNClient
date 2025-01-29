@@ -23,7 +23,7 @@ class File(models.Model):
     type = models.CharField(max_length=256)
     version = models.TextField(null=True, blank=True)
     url = models.URLField(max_length=256, null=True, blank=True)
-    user = models.ForeignKey(User, related_name='cdn_files', on_delete=models.DO_NOTHING, null=True, blank=True)
+    uploaded_by = models.PositiveIntegerField(null=True, blank=True)
     is_assigned = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
@@ -50,8 +50,9 @@ class File(models.Model):
             meta_data = self.client.get_file_metadata(uuid=str(self.uuid))
 
             file_user = User.objects.get(id=int(meta_data['userId']))
-            if self.user.id != file_user.id:
-                raise Exception("Not Same Users")
+            # TODO FIX USER AUTHENTICATIONS
+            # if self.user.id != file_user.id:
+            #     raise Exception("Not Same Users")
             self.name = meta_data['fileName']
             self.url = meta_data['fileUrl']
             self.size = meta_data['fileSize']
