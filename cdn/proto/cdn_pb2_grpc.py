@@ -5,7 +5,7 @@ import warnings
 
 from . import cdn_pb2 as cdn__pb2
 
-GRPC_GENERATED_VERSION = '1.69.0'
+GRPC_GENERATED_VERSION = '1.70.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -45,20 +45,20 @@ class CDNServiceStub(object):
                 request_serializer=cdn__pb2.FileRequest.SerializeToString,
                 response_deserializer=cdn__pb2.FileContentResponse.FromString,
                 _registered_method=True)
-        self.SetToPath = channel.unary_unary(
-                '/cdn.CDNService/SetToPath',
-                request_serializer=cdn__pb2.SetToPathRequest.SerializeToString,
-                response_deserializer=cdn__pb2.SetToPathResponse.FromString,
+        self.AssignToInstance = channel.unary_unary(
+                '/cdn.CDNService/AssignToInstance',
+                request_serializer=cdn__pb2.AssignUnassignRequest.SerializeToString,
+                response_deserializer=cdn__pb2.AssignUnassignResponse.FromString,
                 _registered_method=True)
         self.GetFileStatus = channel.unary_unary(
                 '/cdn.CDNService/GetFileStatus',
                 request_serializer=cdn__pb2.FileRequest.SerializeToString,
                 response_deserializer=cdn__pb2.FileStatusResponse.FromString,
                 _registered_method=True)
-        self.DeleteFile = channel.unary_unary(
-                '/cdn.CDNService/DeleteFile',
-                request_serializer=cdn__pb2.FileDeleteRequest.SerializeToString,
-                response_deserializer=cdn__pb2.FileDeleteResponse.FromString,
+        self.UnassignFromInstance = channel.unary_unary(
+                '/cdn.CDNService/UnassignFromInstance',
+                request_serializer=cdn__pb2.AssignUnassignRequest.SerializeToString,
+                response_deserializer=cdn__pb2.AssignUnassignResponse.FromString,
                 _registered_method=True)
         self.UploadFile = channel.unary_unary(
                 '/cdn.CDNService/UploadFile',
@@ -85,7 +85,7 @@ class CDNServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def SetToPath(self, request, context):
+    def AssignToInstance(self, request, context):
         """Set Chunk File to a valid File
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -99,7 +99,7 @@ class CDNServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def DeleteFile(self, request, context):
+    def UnassignFromInstance(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -124,20 +124,20 @@ def add_CDNServiceServicer_to_server(servicer, server):
                     request_deserializer=cdn__pb2.FileRequest.FromString,
                     response_serializer=cdn__pb2.FileContentResponse.SerializeToString,
             ),
-            'SetToPath': grpc.unary_unary_rpc_method_handler(
-                    servicer.SetToPath,
-                    request_deserializer=cdn__pb2.SetToPathRequest.FromString,
-                    response_serializer=cdn__pb2.SetToPathResponse.SerializeToString,
+            'AssignToInstance': grpc.unary_unary_rpc_method_handler(
+                    servicer.AssignToInstance,
+                    request_deserializer=cdn__pb2.AssignUnassignRequest.FromString,
+                    response_serializer=cdn__pb2.AssignUnassignResponse.SerializeToString,
             ),
             'GetFileStatus': grpc.unary_unary_rpc_method_handler(
                     servicer.GetFileStatus,
                     request_deserializer=cdn__pb2.FileRequest.FromString,
                     response_serializer=cdn__pb2.FileStatusResponse.SerializeToString,
             ),
-            'DeleteFile': grpc.unary_unary_rpc_method_handler(
-                    servicer.DeleteFile,
-                    request_deserializer=cdn__pb2.FileDeleteRequest.FromString,
-                    response_serializer=cdn__pb2.FileDeleteResponse.SerializeToString,
+            'UnassignFromInstance': grpc.unary_unary_rpc_method_handler(
+                    servicer.UnassignFromInstance,
+                    request_deserializer=cdn__pb2.AssignUnassignRequest.FromString,
+                    response_serializer=cdn__pb2.AssignUnassignResponse.SerializeToString,
             ),
             'UploadFile': grpc.unary_unary_rpc_method_handler(
                     servicer.UploadFile,
@@ -211,7 +211,7 @@ class CDNService(object):
             _registered_method=True)
 
     @staticmethod
-    def SetToPath(request,
+    def AssignToInstance(request,
             target,
             options=(),
             channel_credentials=None,
@@ -224,9 +224,9 @@ class CDNService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/cdn.CDNService/SetToPath',
-            cdn__pb2.SetToPathRequest.SerializeToString,
-            cdn__pb2.SetToPathResponse.FromString,
+            '/cdn.CDNService/AssignToInstance',
+            cdn__pb2.AssignUnassignRequest.SerializeToString,
+            cdn__pb2.AssignUnassignResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -265,7 +265,7 @@ class CDNService(object):
             _registered_method=True)
 
     @staticmethod
-    def DeleteFile(request,
+    def UnassignFromInstance(request,
             target,
             options=(),
             channel_credentials=None,
@@ -278,9 +278,9 @@ class CDNService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/cdn.CDNService/DeleteFile',
-            cdn__pb2.FileDeleteRequest.SerializeToString,
-            cdn__pb2.FileDeleteResponse.FromString,
+            '/cdn.CDNService/UnassignFromInstance',
+            cdn__pb2.AssignUnassignRequest.SerializeToString,
+            cdn__pb2.AssignUnassignResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -1,16 +1,22 @@
 from pathlib import Path
 
 import grpc
+
+from .decorators import cdn_cache
 from .proto import cdn_pb2, cdn_pb2_grpc
 from threading import Lock
 from google.protobuf.json_format import MessageToDict
 from django.conf import settings
 import tempfile
+from django.core.cache import caches
+
+SERVICE_NAME = getattr(settings, "SERVICE_NAME")
+SUB_SERVICE_NAME = getattr(settings, "SUB_SERVICE_NAME")
 
 
 def get_secure_channel(server_domain):
-    cert_path = settings.CERT_FILE_PATH
-    cert_path = Path(settings.CERT_FILE_PATH)
+    cert_path = 'cdnservice.pem'
+
     # Load server certificate
     with open(cert_path, "rb") as f:
         trusted_certs = f.read()
@@ -19,26 +25,64 @@ def get_secure_channel(server_domain):
     credentials = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
 
     # Create a secure channel
-    return grpc.secure_channel(f"{server_domain}:50051", credentials)
+    return grpc.secure_channel(f"{server_domain}:50052", credentials)
+
+
+def try_except(func):
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+            return result
+
+        except grpc.RpcError as e:
+            error_message = f"Error: {e.code()} - {e.details()}"
+            print(error_message)
+
+        except Exception as err:
+            print(err)
+
+    return wrapper
 
 
 class CDNClient:
     _instance = None
     _lock = Lock()
+    _service_name = None
+    _sub_service_name = None
+    _conn_address = None
+    _cdn_cache = None
+    _cache_timeout = 60 * 60 * 24  # 24 hours default cache timeout
 
     def __new__(cls):
-        server_address = getattr(settings, "CDN_SERVER_ADDRESS", None)
+        server_address = getattr(settings, "CDN_GRPC_ADDRESS", "localhost")
+        service_name = getattr(settings, "SERVICE_NAME", None)
+        sub_service_name = getattr(settings, "SUB_SERVICE_NAME", None)
+
+        if not service_name:
+            raise Exception("Define SERVICE_NAME in django settings")
+        if not sub_service_name:
+            raise Exception("Define SUB_SERVICE_NAME in django settings")
         if not server_address:
-            raise Exception("set GRPC_SERVER_ADDRESS in django settings")
+            raise Exception("set CDN_GRPC_ADDRESS in django settings")
+
+        cls._service_name = service_name
+        cls._sub_service_name = sub_service_name
+        cls._conn_address = f"{server_address}:50052"
+
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super(CDNClient, cls).__new__(cls)
 
-                cls._instance.channel = get_secure_channel(server_address)
-                cls._instance.stub = cdn_pb2_grpc.CDNServiceStub(cls._instance.channel)
+                try:
+                    cdn_cache = caches['cdn']
+                    cls._cdn_cache = cdn_cache
+                except KeyError:
+                    raise Exception("setup new redis cache named cdn [with desired redis db] ")
 
-                # cls._instance.channel = grpc.insecure_channel(server_address)
-                # cls._instance.stub = cdn_pb2_grpc.CDNServiceStub(cls._instance.channel)
+                cls._instance.channel = get_secure_channel(server_address)
+                # cls._instance.channel = grpc.insecure_channel(cls._conn_address)
+
+                cls._instance.stub = cdn_pb2_grpc.CDNServiceStub(cls._instance.channel)
 
         return cls._instance
 
@@ -48,12 +92,49 @@ class CDNClient:
     def __exit__(self, exc_type, exc_value, traceback):
         self.channel.close()
 
+    def _make_key(self, image_id: str) -> str:
+        """Make a namespaced cache key."""
+        return f"cdn:{image_id}"
+
+    def _get_metadata(self, image_id: str) -> dict | None:
+        """Get metadata for an image_id."""
+        key = self._make_key(image_id)
+        return self._cdn_cache.get(key)
+
+    def _set_metadata(self, image_id: str, metadata: dict) -> None:
+        """Set or overwrite metadata for an image_id."""
+        key = self._make_key(image_id)
+        self._cdn_cache.set(key, metadata, timeout=self._cache_timeout)
+
+    def _get_last_temp(self, image_id: str) -> str | None:
+        """Get downloaded path for an image_id."""
+        key = self._make_key(image_id)
+        result = self._cdn_cache.get(key)
+        if result:
+            path = result.get('temp_path', None)
+            if path:
+                return path
+
+    def _update_temp_path(self, image_id: str, temp_path: str) -> None:
+        """Update only temp_path field for an existing metadata."""
+        key = self._make_key(image_id)
+        metadata = self._cdn_cache.get(key)
+
+        if metadata is None:
+            # If no metadata exists, create a new one
+            metadata = {}
+
+        metadata['temp_path'] = temp_path
+        self._cdn_cache.set(key, metadata, timeout=self._cache_timeout)
+
+    @cdn_cache(_get_metadata, _set_metadata)
     def get_file_metadata(self, uuid: str) -> dict:
         request = cdn_pb2.FileRequest(uuid=uuid)
         result = self.stub.GetFileMetadata(request)
-        return MessageToDict(result)
+        return MessageToDict(result, preserving_proto_field_name=True)
 
-    def download_file(self, uuid: str, output_file_path: str = None, file_name: str = None) -> dict:
+    @cdn_cache(_get_last_temp, _update_temp_path)
+    def download_file(self, uuid: str, output_file_path: str = None, file_name: str = None) -> str:
         request = cdn_pb2.FileRequest(uuid=uuid)
 
         if not output_file_path:
@@ -83,21 +164,38 @@ class CDNClient:
     def check_file_status(self, uuid: str) -> dict:
         request = cdn_pb2.FileRequest(uuid=uuid)
         result = self.stub.GetFileStatus(request)
-        return MessageToDict(result)
+        return MessageToDict(result, preserving_proto_field_name=True)
 
-    def set_to_path(self, uuid: str, path: str, service_name: str, app_name: str, model_name: str) -> dict:
-        request = cdn_pb2.SetToPathRequest(uuid=uuid, path=path, service_name=service_name,
-                                           app_name=app_name, model_name=model_name)
-        result = self.stub.SetToPath(request)
-        return MessageToDict(result)
+    def assign_to_instance(self, uuid: str, content_type_id: int, object_id: int) -> dict:
+        request = cdn_pb2.AssignUnassignRequest(
+            uuid=uuid,
+            service_name=SERVICE_NAME,
+            sub_service_name=SUB_SERVICE_NAME,
+            content_type_id=content_type_id,
+            object_id=object_id)
+        result = self.stub.AssignToInstance(request)
+        return MessageToDict(result, preserving_proto_field_name=True)
 
-    def delete_file(self, uuid: str, hard_delete: bool = True) -> dict:
-        request = cdn_pb2.FileDeleteRequest(uuid=uuid, hard_delete=hard_delete)
-        result = self.stub.DeleteFile(request)
-        return MessageToDict(result)
+    def unassign_from_instance(self, uuid: str, content_type_id: int, object_id: int) -> dict:
+        request = cdn_pb2.AssignUnassignRequest(uuid=uuid,
+                                                service_name=SERVICE_NAME,
+                                                sub_service_name=SUB_SERVICE_NAME,
+                                                content_type_id=content_type_id,
+                                                object_id=object_id)
+        result = self.stub.UnassignFromInstance(request)
+        return MessageToDict(result, preserving_proto_field_name=True)
 
-    def upload_file(self, file:bytes, file_name:str, service_name:str, app_name:str, model_name:str) -> dict:
+    def upload_file(self, file: bytes, file_name: str, service_name: str, app_name: str, model_name: str) -> dict:
 
-        request = cdn_pb2.File(file=file, file_name=file_name, service_name=service_name, app_name=app_name, model_name=model_name)
+        request = cdn_pb2.File(file=file, file_name=file_name, service_name=service_name, app_name=app_name,
+                               model_name=model_name)
         result = self.stub.UploadFile(request)
         return MessageToDict(result)
+
+    @property
+    def service_name(self):
+        return self._service_name
+
+    @property
+    def sub_service_name(self):
+        return self._sub_service_name

@@ -1,56 +1,83 @@
 from rest_framework import serializers
-from .models import File
 
+from .client import CDNClient
+from .models import SingleFileAssociationMixin, MultipleFileAssociationMixin
 
-class FileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = File
-        fields = ["name", "type", "size", "url", "modified_at"]
+client = CDNClient()
 
 
 class FileSerializerMixin:
 
     def get_fields(self):
-        # Call the parent method to get the base fields
         fields = super().get_fields()
+        model = getattr(self.Meta, 'model', None)
+        custom_field_name = getattr(self.Meta, 'file_field_name', None)
 
-        # Dynamically add the `files` field
-        fields['files'] = FileSerializer(many=True, required=False)
+        if not model:
+            return fields
+
+        if issubclass(model, SingleFileAssociationMixin):
+            self._real_file_field = "file"
+            self._is_multiple = False
+            field_name = custom_field_name or "file"
+            fields[field_name] = serializers.SerializerMethodField()
+
+        elif issubclass(model, MultipleFileAssociationMixin):
+            self._real_file_field = "files"
+            self._is_multiple = True
+            field_name = custom_field_name or "files"
+            fields[field_name] = serializers.SerializerMethodField()
 
         return fields
 
+    def __getattr__(self, name):
+        if name.startswith('get_'):
+            requested_field_name = name[4:]  # remove 'get_' prefix
+            model = getattr(self.Meta, 'model', None)
 
-class AddFileSerializer(serializers.Serializer):
-    uuid = serializers.UUIDField(required=True)
+            if not model:
+                raise AttributeError(f"No model found for {self}")
 
-    def save(self, instance):
-        """
-        Save the file for the provided instance.
-        """
-        uuid = self.validated_data['uuid']
-        requested_user = self.context.get('request').user
+            # Dynamically generate getter
+            def dynamic_getter(obj):
+                real_field = getattr(self, '_real_file_field', None)
+                is_multiple = getattr(self, '_is_multiple', False)
 
-        # Call the instance's `add_file` method
-        instance.add_file(uuid=uuid, requested_user_id=requested_user.id)
+                if not real_field:
+                    return None
 
-        # Optionally, return some response data
-        return {"detail": f"File with UUID {uuid} added successfully."}
+                value = getattr(obj, real_field, None)
 
+                if not value:
+                    return None
 
-class DeleteFileSerializer(serializers.Serializer):
-    uuid = serializers.UUIDField(required=True)
-    hard_delete = serializers.BooleanField(default=False)
+                if is_multiple:
+                    return self.serialize_multiple_files(value)
+                else:
+                    return self.serialize_single_file(value)
 
-    def save(self, instance):
-        """
-        Save the file for the provided instance.
-        """
-        uuid = self.validated_data['uuid']
-        hard_delete = self.validated_data['hard_delete']
+            return dynamic_getter
 
-        # Call the instance's `add_file` method
-        result = instance.delete_file(uuid=uuid, hard_delete=hard_delete)
+        raise AttributeError(f"{self.__class__.__name__} object has no attribute {name}")
 
-        print(result)
-        # Optionally, return some response data
-        return {"detail": f"File with UUID {uuid} deleted successfully."}
+    def serialize_single_file(self, file_uuid):
+        if not file_uuid:
+            return None
+        try:
+            return client.get_file_metadata(str(file_uuid))
+        except Exception:
+            return None
+
+    def serialize_multiple_files(self, file_uuid_list):
+        if not file_uuid_list:
+            return []
+        results = []
+        for uuid in file_uuid_list:
+            try:
+                metadata = client.get_file_metadata(str(uuid))
+                if metadata:
+                    results.append(metadata)
+            except Exception:
+                continue
+        return results
+

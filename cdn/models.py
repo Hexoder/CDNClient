@@ -1,189 +1,166 @@
 from pathlib import Path
-from sys import getsizeof
-
-from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models.signals import class_prepared
-from django.utils import timezone
-from django.apps import apps
+from django.conf import settings
 
 from .client import CDNClient
-from .managers import SoftDeleteManager
-from .utils import get_project_name, generate_path
+
+SERVICE_NAME = getattr(settings, "SERVICE_NAME")
+SUB_SERVICE_NAME = getattr(settings, "SUB_SERVICE_NAME")
 
 
-class File(models.Model):
-    uuid = models.UUIDField(null=True, blank=True, unique=True, editable=False)
-    name = models.CharField(max_length=128)
-    size = models.FloatField(null=True, blank=True)
-    type = models.CharField(max_length=256)
-    version = models.TextField(null=True, blank=True)
-    url = models.URLField(max_length=256, null=True, blank=True)
-    user_id = models.PositiveIntegerField(null=True, blank=True)
-    is_assigned = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    modified_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
+class SingleFileAssociationMixin(models.Model):
+    file = models.UUIDField(null=True, blank=True)
 
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-    last_temp_path = models.CharField(max_length=128, null=True, blank=True)
-
-    objects = SoftDeleteManager()
+    _original_file = None
 
     @property
     def client(self):
         return CDNClient()
 
-    def save(self, *args, force_insert=False, force_update=False, using=None, update_fields=None,
-             direct_upload: bool = False):
-        created = self.pk is None
-        if created and not direct_upload:
+    class Meta:
+        abstract = True
 
-            result = self.client.check_file_status(uuid=str(self.uuid))
-            if not result["isAvailable"]:
-                raise Exception("File Not Found!")
-            meta_data = self.client.get_file_metadata(uuid=str(self.uuid))
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_file = self.file
 
-            # # TODO FIX USER AUTHENTICATIONS
-            # if self.user_id != int(meta_data['userId']):
-            #     raise Exception("Not Same Users")
+    def has_file_changed(self):
+        return self.file != self._original_file
 
-            self.name = meta_data['fileName']
-            self.url = meta_data['fileUrl']
-            self.size = meta_data['fileSize']
-            self.type = meta_data['fileType']
+    def _check_file_status(self, file_id: str):
+        result = self.client.check_file_status(uuid=file_id)
+        if not result["is_available"]:
+            raise Exception("File Not Found!")
 
-        super().save(
-            *args,
-            force_insert=force_insert,
-            force_update=force_update,
-            using=using,
-        )
-        if created and not direct_upload:
-            self.assign_to_model()
+    def handle_single_file_change(self, old_file: str, new_file: str):
 
-    def assign_to_path(self, path: str, service_name: str, app_name: str, model_name: str, model_pk: int):
-        result = self.client.set_to_path(str(self.uuid), path, service_name, app_name, model_name)
+        print(f"Single file changed from {old_file} to {new_file}")
 
-        if result:
-            self.url = result.get('newUrl')
-            self.uuid = result.get('newUuid')
-            self.version = result.get('version')
-            print(self.url)
-            self.is_assigned = True
-            self.save(update_fields=['is_assigned', 'file', 'uuid', 'version'])
-            print(result)
+        content_type = ContentType.objects.get_for_model(self)
 
-    def assign_to_model(self):
+        try:
 
-        service_name, app_name, model_name, model_pk, path = generate_path(self.content_object)
+            if old_file:
+                print(f"Deleting old file {old_file} from CDN")
+                self._check_file_status(file_id=str(old_file))
+                self.client.unassign_from_instance(
+                    uuid=str(old_file),
+                    content_type_id=content_type.id,
+                    object_id=self.id)
 
-        self.assign_to_path(
-            path=str(path),
-            service_name=service_name,
-            app_name=app_name,
-            model_name=model_name,
-            model_pk=model_pk
-        )
+            if new_file:
+                print(f"Fetching new file {new_file} from CDN")
+                self._check_file_status(file_id=str(new_file))
+                self.client.assign_to_instance(uuid=str(new_file),
+                                               content_type_id=content_type.id,
+                                               object_id=self.id)
 
-    def get_metadata(self):
-        result = self.client.get_file_metadata(str(self.uuid))
-        if result:
-            return result
+            self._original_file = self.file
+        except Exception as err:
+            self.file = self._original_file
+            print(f"file update unsuccessful, err: {err}")
+
+    def is_file_filled(self):
+        return bool(self.file)
+
+    def save(self, *args, **kwargs):
+        if self.has_file_changed():
+            self.handle_single_file_change(self._original_file, self.file)
+        if not self.pk:
+            super().save(*args, **kwargs)
+            if self.file:
+                self.handle_single_file_change("", self.file)
+        else:
+            super().save(*args, **kwargs)
+
+    def set_file(self, cdn_file_uuid, requested_user_id):
+        if self.file:
+            raise ValidationError("File already set")
+        self.file = cdn_file_uuid
+        SingleFileAssociationMixin.save(self, requested_user_id=requested_user_id)
+
+    def remove_file(self, requested_user_id):
+        self.file = None
+        SingleFileAssociationMixin.save(self, requested_user_id=requested_user_id)
+
+    def get_file_metadata(self):
+        return self.client.get_file_metadata(str(self.file))
 
     def get_file(self, output_path: Path = None) -> str:
-        if self.last_temp_path and Path(self.last_temp_path).exists():
-            return self.last_temp_path
-        else:
-            self.last_temp_path = None
-
+        # if self.last_temp_path and Path(self.last_temp_path).exists():
+        #     return self.last_temp_path
+        # else:
+        #     self.last_temp_path = None
+        file_name = self.get_file_metadata().get("file_name")
         if output_path:
             output_path = output_path / self.name
-        result = self.client.download_file(str(self.uuid), output_file_path=output_path, file_name=self.name)
-        self.last_temp_path = result
-        self.save(update_fields=['last_temp_path'])
+        result = self.client.download_file(str(self.file), output_file_path=output_path, file_name=file_name)
+        # self.last_temp_path = result
+        # self.save(update_fields=['last_temp_path'])
         return result
 
-    def delete(self, using=None, keep_parents=False, hard_delete=False):
-        self.deleted_at = timezone.now()
-        result = self.client.delete_file(str(self.uuid), hard_delete=hard_delete)
-        if not result['isDone']:
-            raise Exception(f'failed to delete file, {result["message"]}')
-        return self.save(update_fields=['deleted_at'])
 
-    def hard_delete(self, using=None, keep_parents=False):
-        return self.delete(using=using, keep_parents=keep_parents, hard_delete=True)
+class MultipleFileAssociationMixin(models.Model):
+    files = models.JSONField(default=list, blank=True)
 
+    _original_files = None
 
-class FileAssociationMixin:
+    class Meta:
+        abstract = True
 
-    @property
-    def client(self):
-        return CDNClient()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_files = list(self.files) if self.files else []
 
-    @classmethod
-    def _add_files_field(cls, model_cls):
-        """Add the `files` GenericRelation field to the model."""
-        if not issubclass(model_cls, models.Model):
-            raise TypeError("FileAssociationMixin can only be used with Django model classes.")
+    def has_files_changed(self):
+        """Compare the original files with the current files."""
+        return self.files != self._original_files
 
-        if not hasattr(model_cls, 'files'):
-            # Use a lazy reference for the File model
-            def lazy_generic_relation():
-                return GenericRelation(
-                    File,
-                    related_name=f'{model_cls.__name__.lower()}_files'
-                )
+    def are_files_filled(self):
+        """Check if there are any files."""
+        return bool(self.files)
 
-            # Add the field to the class
-            model_cls.add_to_class('files', lazy_generic_relation())
+    def handle_multiple_files_change(self, old_files, new_files):
+        """Handle file changes: additions and removals."""
+        old_set = set(old_files or [])
+        new_set = set(new_files or [])
 
-    @classmethod
-    def handle_class_prepared(cls, sender, **kwargs):
-        """Handle the `class_prepared` signal to add the files field."""
-        if issubclass(sender, cls):
-            cls._add_files_field(sender)
+        removed = old_set - new_set
+        added = new_set - old_set
 
-    def __init_subclass__(cls, **kwargs):
-        """Connect the class_prepared signal for subclasses."""
-        super().__init_subclass__(**kwargs)
-        class_prepared.connect(cls.handle_class_prepared, sender=cls)
+        # Print out what was added and removed
+        print(f"Files removed: {removed}")
+        print(f"Files added: {added}")
 
-    def add_file(self, cdn_file_uuid, requested_user_id: int):
-        from pathlib import Path  # Ensure it's imported locally
-        # Ensure that _meta and app_label are accessible
-        if not hasattr(self.__class__, '_meta'):
-            raise TypeError("FileAssociationMixin can only be used with Django model classes.")
+        # Example actions when files are removed or added
+        for file in removed:
+            print(f"Deleting removed file {file} from CDN")
+            # You would put your CDN deletion logic here
 
-        # Fetch the user and associate the file
-        file = File.objects.create(uuid=cdn_file_uuid, user_id=requested_user_id, content_object=self)
-        return file
+        for file in added:
+            print(f"Fetching added file {file} from CDN")
+            # You would put your CDN fetching logic here
+        self._original_files = list(self.files) if self.files else []
 
-    def upload_file(self, file: bytes, file_name: str):
+    def validate_unique(self, exclude=None):
+        super().validate_unique(exclude)
+        if len(self.files) != len(set(self.files)):
+            self.files = list(set(self.files))
+            raise ValidationError("Files must be unique. Duplicate files found.")
 
-        # Ensure that _meta and app_label are accessible
-        if not hasattr(self.__class__, '_meta'):
-            raise TypeError("FileAssociationMixin can only be used with Django model classes.")
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        if self.has_files_changed():
+            self.handle_multiple_files_change(self._original_files, self.files)
 
-        service_name, app_name, model_name, model_pk, path = generate_path(self)
-        result = self.client.upload_file(file=file, file_name=file_name, service_name=service_name, app_name=app_name,
-                                         model_name=model_name)
-        if not result:
-            raise Exception("Failed to upload file, try again!")
-        new_uuid = result.get('uuid')
-        url = Path("media") / "uploads" / service_name / app_name / model_name / file_name
-        local_file = File(uuid=new_uuid, name=file_name, size=getsizeof(file), type=file_name.split('.')[-1], url=url,
-                          is_assigned=True, content_object=self)
-        local_file.save(direct_upload=True)
-        return local_file
+        super().save(*args, **kwargs)
 
-    def delete_file(self, uuid: str, hard_delete: bool = False):
-        try:
-            file = self.files.get(uuid=uuid)
-            return file.hard_delete() if hard_delete else file.delete()
+    def add_file(self, cdn_file_uuid):
+        self.files.append(cdn_file_uuid)
+        self.save()
 
-        except File.DoesNotExist as err:
-            return err
+    def remove_file(self, cdn_file_uuid):
+        self.files.pop(self.files.index(cdn_file_uuid))
+        self.save()
