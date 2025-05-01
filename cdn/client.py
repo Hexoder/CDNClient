@@ -166,22 +166,25 @@ class CDNClient:
         result = self.stub.GetFileStatus(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    def assign_to_instance(self, uuid: str, content_type_id: int, object_id: int) -> dict:
+    def assign_to_instance(self, uuid: str, content_type_id: int, object_id: int, local_id: int | None = None) -> dict:
         request = cdn_pb2.AssignUnassignRequest(
             uuid=uuid,
             service_name=SERVICE_NAME,
             sub_service_name=SUB_SERVICE_NAME,
             content_type_id=content_type_id,
-            object_id=object_id)
+            object_id=object_id,
+            local_id=local_id)
         result = self.stub.AssignToInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    def unassign_from_instance(self, uuid: str, content_type_id: int, object_id: int) -> dict:
-        request = cdn_pb2.AssignUnassignRequest(uuid=uuid,
-                                                service_name=SERVICE_NAME,
-                                                sub_service_name=SUB_SERVICE_NAME,
-                                                content_type_id=content_type_id,
-                                                object_id=object_id)
+    def unassign_from_instance(self, uuid: str, content_type_id: int, object_id: int, local_id: int | None = None) -> dict:
+        request = cdn_pb2.AssignUnassignRequest(
+            uuid=uuid,
+            service_name=SERVICE_NAME,
+            sub_service_name=SUB_SERVICE_NAME,
+            content_type_id=content_type_id,
+            object_id=object_id,
+            local_id=local_id)
         result = self.stub.UnassignFromInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 

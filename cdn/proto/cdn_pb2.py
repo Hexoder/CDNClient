@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tcdn.proto\x12\x03\x63\x64n\"h\n\x04\x46ile\x12\x0c\n\x04\x66ile\x18\x01 \x01(\x0c\x12\x11\n\tfile_name\x18\x02 \x01(\t\x12\x14\n\x0cservice_name\x18\x03 \x01(\t\x12\x18\n\x10sub_service_name\x18\x04 \x01(\t\x12\x0f\n\x07user_id\x18\x05 \x01(\x03\"2\n\x12\x46ileUploadResponse\x12\x0e\n\x06result\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"\x81\x01\n\x15\x41ssignUnassignRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x14\n\x0cservice_name\x18\x02 \x01(\t\x12\x18\n\x10sub_service_name\x18\x03 \x01(\t\x12\x17\n\x0f\x63ontent_type_id\x18\x04 \x01(\x03\x12\x11\n\tobject_id\x18\x05 \x01(\x03\":\n\x16\x41ssignUnassignResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x0f\n\x07is_done\x18\x02 \x01(\x08\"\x1b\n\x0b\x46ileRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"\x83\x01\n\x14\x46ileMetadataResponse\x12\x11\n\tfile_name\x18\x01 \x01(\t\x12\x10\n\x08\x66ile_url\x18\x02 \x01(\t\x12\x11\n\tfile_size\x18\x03 \x01(\x03\x12\x11\n\tfile_type\x18\x04 \x01(\t\x12\x0f\n\x07version\x18\x05 \x01(\t\x12\x0f\n\x07user_id\x18\x06 \x01(\x03\"+\n\x13\x46ileContentResponse\x12\x14\n\x0c\x66ile_content\x18\x01 \x01(\x0c\"*\n\x12\x46ileStatusResponse\x12\x14\n\x0cis_available\x18\x01 \x01(\x08\x32\x98\x03\n\nCDNService\x12>\n\x0fGetFileMetadata\x12\x10.cdn.FileRequest\x1a\x19.cdn.FileMetadataResponse\x12>\n\x0eGetFileContent\x12\x10.cdn.FileRequest\x1a\x18.cdn.FileContentResponse0\x01\x12K\n\x10\x41ssignToInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12:\n\rGetFileStatus\x12\x10.cdn.FileRequest\x1a\x17.cdn.FileStatusResponse\x12O\n\x14UnassignFromInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12\x30\n\nUploadFile\x12\t.cdn.File\x1a\x17.cdn.FileUploadResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tcdn.proto\x12\x03\x63\x64n\"h\n\x04\x46ile\x12\x0c\n\x04\x66ile\x18\x01 \x01(\x0c\x12\x11\n\tfile_name\x18\x02 \x01(\t\x12\x14\n\x0cservice_name\x18\x03 \x01(\t\x12\x18\n\x10sub_service_name\x18\x04 \x01(\t\x12\x0f\n\x07user_id\x18\x05 \x01(\x03\"2\n\x12\x46ileUploadResponse\x12\x0e\n\x06result\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"\x93\x01\n\x15\x41ssignUnassignRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x14\n\x0cservice_name\x18\x02 \x01(\t\x12\x18\n\x10sub_service_name\x18\x03 \x01(\t\x12\x17\n\x0f\x63ontent_type_id\x18\x04 \x01(\x03\x12\x11\n\tobject_id\x18\x05 \x01(\x03\x12\x10\n\x08local_id\x18\x06 \x01(\x03\":\n\x16\x41ssignUnassignResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x0f\n\x07is_done\x18\x02 \x01(\x08\"\x1b\n\x0b\x46ileRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"\x83\x01\n\x14\x46ileMetadataResponse\x12\x11\n\tfile_name\x18\x01 \x01(\t\x12\x10\n\x08\x66ile_url\x18\x02 \x01(\t\x12\x11\n\tfile_size\x18\x03 \x01(\x03\x12\x11\n\tfile_type\x18\x04 \x01(\t\x12\x0f\n\x07version\x18\x05 \x01(\t\x12\x0f\n\x07user_id\x18\x06 \x01(\x03\"+\n\x13\x46ileContentResponse\x12\x14\n\x0c\x66ile_content\x18\x01 \x01(\x0c\"*\n\x12\x46ileStatusResponse\x12\x14\n\x0cis_available\x18\x01 \x01(\x08\x32\x98\x03\n\nCDNService\x12>\n\x0fGetFileMetadata\x12\x10.cdn.FileRequest\x1a\x19.cdn.FileMetadataResponse\x12>\n\x0eGetFileContent\x12\x10.cdn.FileRequest\x1a\x18.cdn.FileContentResponse0\x01\x12K\n\x10\x41ssignToInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12:\n\rGetFileStatus\x12\x10.cdn.FileRequest\x1a\x17.cdn.FileStatusResponse\x12O\n\x14UnassignFromInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12\x30\n\nUploadFile\x12\t.cdn.File\x1a\x17.cdn.FileUploadResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -36,17 +36,17 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_FILEUPLOADRESPONSE']._serialized_start=124
   _globals['_FILEUPLOADRESPONSE']._serialized_end=174
   _globals['_ASSIGNUNASSIGNREQUEST']._serialized_start=177
-  _globals['_ASSIGNUNASSIGNREQUEST']._serialized_end=306
-  _globals['_ASSIGNUNASSIGNRESPONSE']._serialized_start=308
-  _globals['_ASSIGNUNASSIGNRESPONSE']._serialized_end=366
-  _globals['_FILEREQUEST']._serialized_start=368
-  _globals['_FILEREQUEST']._serialized_end=395
-  _globals['_FILEMETADATARESPONSE']._serialized_start=398
-  _globals['_FILEMETADATARESPONSE']._serialized_end=529
-  _globals['_FILECONTENTRESPONSE']._serialized_start=531
-  _globals['_FILECONTENTRESPONSE']._serialized_end=574
-  _globals['_FILESTATUSRESPONSE']._serialized_start=576
-  _globals['_FILESTATUSRESPONSE']._serialized_end=618
-  _globals['_CDNSERVICE']._serialized_start=621
-  _globals['_CDNSERVICE']._serialized_end=1029
+  _globals['_ASSIGNUNASSIGNREQUEST']._serialized_end=324
+  _globals['_ASSIGNUNASSIGNRESPONSE']._serialized_start=326
+  _globals['_ASSIGNUNASSIGNRESPONSE']._serialized_end=384
+  _globals['_FILEREQUEST']._serialized_start=386
+  _globals['_FILEREQUEST']._serialized_end=413
+  _globals['_FILEMETADATARESPONSE']._serialized_start=416
+  _globals['_FILEMETADATARESPONSE']._serialized_end=547
+  _globals['_FILECONTENTRESPONSE']._serialized_start=549
+  _globals['_FILECONTENTRESPONSE']._serialized_end=592
+  _globals['_FILESTATUSRESPONSE']._serialized_start=594
+  _globals['_FILESTATUSRESPONSE']._serialized_end=636
+  _globals['_CDNSERVICE']._serialized_start=639
+  _globals['_CDNSERVICE']._serialized_end=1047
 # @@protoc_insertion_point(module_scope)

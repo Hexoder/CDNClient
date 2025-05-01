@@ -3,21 +3,32 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
-
+import uuid
+from .utils import InfiniteInt, FileMaxedOutError
 from .client import CDNClient
 
 SERVICE_NAME = getattr(settings, "SERVICE_NAME")
 SUB_SERVICE_NAME = getattr(settings, "SUB_SERVICE_NAME")
 
 
-class SingleFileAssociationMixin(models.Model):
-    file = models.UUIDField(null=True, blank=True)
-
-    _original_file = None
+class FileAssociationMixin(models.Model):
+    class Meta:
+        abstract = True
 
     @property
     def client(self):
         return CDNClient()
+
+    def _check_file_status(self, file_id: str):
+        result = self.client.check_file_status(uuid=file_id)
+        if not result["is_available"]:
+            raise Exception("File Not Found!")
+
+
+class SingleFileAssociationMixin(FileAssociationMixin):
+    file = models.UUIDField(null=True, blank=True)
+
+    _original_file = None
 
     class Meta:
         abstract = True
@@ -29,10 +40,8 @@ class SingleFileAssociationMixin(models.Model):
     def has_file_changed(self):
         return self.file != self._original_file
 
-    def _check_file_status(self, file_id: str):
-        result = self.client.check_file_status(uuid=file_id)
-        if not result["is_available"]:
-            raise Exception("File Not Found!")
+    def is_file_filled(self):
+        return bool(self.file)
 
     def handle_single_file_change(self, old_file: str, new_file: str):
 
@@ -62,9 +71,6 @@ class SingleFileAssociationMixin(models.Model):
             self.file = self._original_file
             print(f"file update unsuccessful, err: {err}")
 
-    def is_file_filled(self):
-        return bool(self.file)
-
     def save(self, *args, **kwargs):
         if self.has_file_changed():
             self.handle_single_file_change(self._original_file, self.file)
@@ -76,8 +82,6 @@ class SingleFileAssociationMixin(models.Model):
             super().save(*args, **kwargs)
 
     def set_file(self, cdn_file_uuid, requested_user_id):
-        if self.file:
-            raise ValidationError("File already set")
         self.file = cdn_file_uuid
         SingleFileAssociationMixin.save(self, requested_user_id=requested_user_id)
 
@@ -89,30 +93,53 @@ class SingleFileAssociationMixin(models.Model):
         return self.client.get_file_metadata(str(self.file))
 
     def get_file(self, output_path: Path = None) -> str:
-        # if self.last_temp_path and Path(self.last_temp_path).exists():
-        #     return self.last_temp_path
-        # else:
-        #     self.last_temp_path = None
         file_name = self.get_file_metadata().get("file_name")
         if output_path:
             output_path = output_path / self.name
         result = self.client.download_file(str(self.file), output_file_path=output_path, file_name=file_name)
-        # self.last_temp_path = result
-        # self.save(update_fields=['last_temp_path'])
         return result
 
 
-class MultipleFileAssociationMixin(models.Model):
+class MultipleFileAssociationMixin(FileAssociationMixin):
     files = models.JSONField(default=list, blank=True)
+    files_local_ids = models.JSONField(default=dict, blank=True)
 
     _original_files = None
+    _max_allowed_files: int | InfiniteInt = InfiniteInt()
 
     class Meta:
         abstract = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        print(self._max_allowed_files)
         self._original_files = list(self.files) if self.files else []
+
+    def _get_last_assigned_local_id(self) -> int:
+        try:
+            last_id = list(self.files_local_ids.keys())[-1]
+            return int(last_id) if last_id else 0
+        except:
+            return 0
+
+    def _get_local_id_by_cdnfileid(self, cdn_file_id: uuid.UUID) -> int | None:
+        for key, value in self.files_local_ids.items():
+            if value == cdn_file_id:
+                return int(key)
+        return None
+
+    def _get_cdnfileid_by_local_id(self, local_id: int) -> uuid.UUID | None:
+        return self.files_local_ids.get(str(local_id), None)
+
+    def _get_next_local_id(self) -> int:
+        return self._get_last_assigned_local_id() + 1
+
+    def _assign_local_id(self, cdn_file_id: uuid.uuid4, new_local_id: int) -> None:
+
+        self.files_local_ids[str(new_local_id)] = cdn_file_id
+
+    def _delete_local_id(self, local_id: int) -> None:
+        del self.files_local_ids[str(local_id)]
 
     def has_files_changed(self):
         """Compare the original files with the current files."""
@@ -124,6 +151,9 @@ class MultipleFileAssociationMixin(models.Model):
 
     def handle_multiple_files_change(self, old_files, new_files):
         """Handle file changes: additions and removals."""
+
+        content_type = ContentType.objects.get_for_model(self)
+
         old_set = set(old_files or [])
         new_set = set(new_files or [])
 
@@ -134,15 +164,33 @@ class MultipleFileAssociationMixin(models.Model):
         print(f"Files removed: {removed}")
         print(f"Files added: {added}")
 
-        # Example actions when files are removed or added
-        for file in removed:
-            print(f"Deleting removed file {file} from CDN")
-            # You would put your CDN deletion logic here
+        try:
+            for file in removed:
+                print(f"Deleting removed file {file} from CDN")
+                self._check_file_status(file_id=str(file))
+                old_local_id = self._get_local_id_by_cdnfileid(file)
+                self.client.unassign_from_instance(
+                    uuid=str(file),
+                    content_type_id=content_type.id,
+                    object_id=self.id,
+                    local_id=old_local_id)
+                self._delete_local_id(old_local_id)
 
-        for file in added:
-            print(f"Fetching added file {file} from CDN")
-            # You would put your CDN fetching logic here
-        self._original_files = list(self.files) if self.files else []
+            for file in added:
+                print(f"Fetching added file {file} from CDN")
+                self._check_file_status(file_id=str(file))
+                new_local_id = self._get_next_local_id()
+                self.client.assign_to_instance(uuid=str(file),
+                                               content_type_id=content_type.id,
+                                               object_id=self.id,
+                                               local_id=new_local_id)
+                self._assign_local_id(file, new_local_id)
+
+            self._original_files = list(self.files) if self.files else []
+
+        except Exception as err:
+            self.files = self._original_files
+            print(f"file update unsuccessful, err: {err}")
 
     def validate_unique(self, exclude=None):
         super().validate_unique(exclude)
@@ -151,16 +199,39 @@ class MultipleFileAssociationMixin(models.Model):
             raise ValidationError("Files must be unique. Duplicate files found.")
 
     def save(self, *args, **kwargs):
+
         self.full_clean()
         if self.has_files_changed():
             self.handle_multiple_files_change(self._original_files, self.files)
-
-        super().save(*args, **kwargs)
+        if not self.pk:
+            super().save(*args, **kwargs)
+            if self.files:
+                self.handle_multiple_files_change({}, self.files)
+        else:
+            super().save(*args, **kwargs)
 
     def add_file(self, cdn_file_uuid):
+        if not len(self.files) < self._max_allowed_files:
+            raise FileMaxedOutError(self._max_allowed_files)
         self.files.append(cdn_file_uuid)
         self.save()
 
-    def remove_file(self, cdn_file_uuid):
+    def remove_file(self, local_file_id: int):
+        cdn_file_uuid = self._get_cdnfileid_by_local_id(local_file_id)
+        self._remove_file(cdn_file_uuid)
+
+    def _remove_file(self, cdn_file_uuid: uuid.UUID):
         self.files.pop(self.files.index(cdn_file_uuid))
         self.save()
+
+    def get_file_metadata(self, cdn_file_id: uuid.UUID = None, local_file_id: int = None):
+        if local_file_id and not cdn_file_id:
+            cdn_file_id = self._get_cdnfileid_by_local_id(local_file_id)
+        return self.client.get_file_metadata(str(cdn_file_id))
+
+    def get_file(self, cdn_file_id: uuid.UUID = None, local_file_id: int = None, output_path: Path = None) -> str:
+        file_name = self.get_file_metadata(cdn_file_id=cdn_file_id, local_file_id=local_file_id).get("file_name")
+        if output_path:
+            output_path = output_path / self.name
+        result = self.client.download_file(str(self.file), output_file_path=output_path, file_name=file_name)
+        return result
