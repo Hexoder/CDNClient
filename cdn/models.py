@@ -103,6 +103,7 @@ class SingleFileAssociationMixin(FileAssociationMixin):
 class MultipleFileAssociationMixin(FileAssociationMixin):
     files = models.JSONField(default=list, blank=True)
     files_local_ids = models.JSONField(default=dict, blank=True)
+    last_assigned_id = models.PositiveIntegerField(null=True, blank=True)
 
     _original_files = None
     _max_allowed_files: int | InfiniteInt = InfiniteInt()
@@ -116,11 +117,7 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
         self._original_files = list(self.files) if self.files else []
 
     def _get_last_assigned_local_id(self) -> int:
-        try:
-            last_id = list(self.files_local_ids.keys())[-1]
-            return int(last_id) if last_id else 0
-        except:
-            return 0
+        return self.last_assigned_id if self.last_assigned_id else 0
 
     def _get_local_id_by_cdnfileid(self, cdn_file_id: uuid.UUID) -> int | None:
         for key, value in self.files_local_ids.items():
@@ -137,6 +134,7 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
     def _assign_local_id(self, cdn_file_id: uuid.uuid4, new_local_id: int) -> None:
 
         self.files_local_ids[str(new_local_id)] = cdn_file_id
+        self.last_assigned_id = new_local_id
 
     def _delete_local_id(self, local_id: int) -> None:
         del self.files_local_ids[str(local_id)]
