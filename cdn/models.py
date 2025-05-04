@@ -81,13 +81,13 @@ class SingleFileAssociationMixin(FileAssociationMixin):
         else:
             super().save(*args, **kwargs)
 
-    def set_file(self, cdn_file_uuid, requested_user_id):
+    def set_file(self, cdn_file_uuid):
         self.file = cdn_file_uuid
-        SingleFileAssociationMixin.save(self, requested_user_id=requested_user_id)
+        SingleFileAssociationMixin.save(self)
 
-    def remove_file(self, requested_user_id):
+    def remove_file(self):
         self.file = None
-        SingleFileAssociationMixin.save(self, requested_user_id=requested_user_id)
+        SingleFileAssociationMixin.save(self)
 
     def get_file_metadata(self):
         return self.client.get_file_metadata(str(self.file))
