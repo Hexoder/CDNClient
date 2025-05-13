@@ -25,7 +25,7 @@ def get_secure_channel(server_domain):
     credentials = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
 
     # Create a secure channel
-    return grpc.secure_channel(f"{server_domain}:50052", credentials)
+    return grpc.secure_channel(f"{server_domain}:50051", credentials)
 
 
 def try_except(func):
