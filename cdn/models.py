@@ -113,7 +113,6 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print(self._max_allowed_files)
         self._original_files = list(self.files) if self.files else []
 
     def _get_last_assigned_local_id(self) -> int:
@@ -229,7 +228,9 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
 
     def get_file(self, cdn_file_id: uuid.UUID = None, local_file_id: int = None, output_path: Path = None) -> str:
         file_name = self.get_file_metadata(cdn_file_id=cdn_file_id, local_file_id=local_file_id).get("file_name")
+        if not cdn_file_id:
+            cdn_file_id = self._get_cdnfileid_by_local_id(local_file_id)
         if output_path:
             output_path = output_path / self.name
-        result = self.client.download_file(str(self.file), output_file_path=output_path, file_name=file_name)
+        result = self.client.download_file(str(cdn_file_id), output_file_path=output_path, file_name=file_name)
         return result
