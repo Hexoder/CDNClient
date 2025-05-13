@@ -67,7 +67,7 @@ class CDNClient:
 
         cls._service_name = service_name
         cls._sub_service_name = sub_service_name
-        cls._conn_address = f"{server_address}:50052"
+        cls._conn_address = f"{server_address}:50051"
 
         with cls._lock:
             if cls._instance is None:
