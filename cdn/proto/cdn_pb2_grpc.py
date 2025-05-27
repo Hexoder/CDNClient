@@ -65,6 +65,11 @@ class CDNServiceStub(object):
                 request_serializer=cdn__pb2.File.SerializeToString,
                 response_deserializer=cdn__pb2.FileUploadResponse.FromString,
                 _registered_method=True)
+        self.FilterFile = channel.unary_unary(
+                '/cdn.CDNService/FilterFile',
+                request_serializer=cdn__pb2.FilterFileRequest.SerializeToString,
+                response_deserializer=cdn__pb2.FileMetadataListResponse.FromString,
+                _registered_method=True)
 
 
 class CDNServiceServicer(object):
@@ -111,6 +116,12 @@ class CDNServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def FilterFile(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CDNServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -143,6 +154,11 @@ def add_CDNServiceServicer_to_server(servicer, server):
                     servicer.UploadFile,
                     request_deserializer=cdn__pb2.File.FromString,
                     response_serializer=cdn__pb2.FileUploadResponse.SerializeToString,
+            ),
+            'FilterFile': grpc.unary_unary_rpc_method_handler(
+                    servicer.FilterFile,
+                    request_deserializer=cdn__pb2.FilterFileRequest.FromString,
+                    response_serializer=cdn__pb2.FileMetadataListResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -308,6 +324,33 @@ class CDNService(object):
             '/cdn.CDNService/UploadFile',
             cdn__pb2.File.SerializeToString,
             cdn__pb2.FileUploadResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def FilterFile(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/cdn.CDNService/FilterFile',
+            cdn__pb2.FilterFileRequest.SerializeToString,
+            cdn__pb2.FileMetadataListResponse.FromString,
             options,
             channel_credentials,
             insecure,
