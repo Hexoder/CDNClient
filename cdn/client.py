@@ -204,7 +204,7 @@ class CDNClient:
             user_id=user_id,
             uuid_list=uuid_list
         )
-        result = self.stub.UploadFile(request)
+        result = self.stub.FilterFile(request)
         return MessageToDict(result)
 
     @property
