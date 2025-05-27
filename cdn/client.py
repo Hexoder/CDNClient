@@ -205,7 +205,7 @@ class CDNClient:
             uuid_list=uuid_list
         )
         result = self.stub.FilterFile(request)
-        return MessageToDict(result)
+        return MessageToDict(result, preserving_proto_field_name=True)
 
     @property
     def service_name(self):
