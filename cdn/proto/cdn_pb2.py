@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tcdn.proto\x12\x03\x63\x64n\"h\n\x04\x46ile\x12\x0c\n\x04\x66ile\x18\x01 \x01(\x0c\x12\x11\n\tfile_name\x18\x02 \x01(\t\x12\x14\n\x0cservice_name\x18\x03 \x01(\t\x12\x18\n\x10sub_service_name\x18\x04 \x01(\t\x12\x0f\n\x07user_id\x18\x05 \x01(\x03\"2\n\x12\x46ileUploadResponse\x12\x0e\n\x06result\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"\x93\x01\n\x15\x41ssignUnassignRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x14\n\x0cservice_name\x18\x02 \x01(\t\x12\x18\n\x10sub_service_name\x18\x03 \x01(\t\x12\x17\n\x0f\x63ontent_type_id\x18\x04 \x01(\x03\x12\x11\n\tobject_id\x18\x05 \x01(\x03\x12\x10\n\x08local_id\x18\x06 \x01(\x03\":\n\x16\x41ssignUnassignResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x0f\n\x07is_done\x18\x02 \x01(\x08\"\x1b\n\x0b\x46ileRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"\xa8\x01\n\x11\x46ilterFileRequest\x12\x11\n\tuuid_list\x18\x01 \x03(\t\x12\x19\n\x0cservice_name\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x1d\n\x10sub_service_name\x18\x03 \x01(\tH\x01\x88\x01\x01\x12\x14\n\x07user_id\x18\x04 \x01(\x03H\x02\x88\x01\x01\x42\x0f\n\r_service_nameB\x13\n\x11_sub_service_nameB\n\n\x08_user_id\"\xb3\x01\n\x14\x46ileMetadataResponse\x12\x11\n\tfile_name\x18\x01 \x01(\t\x12\x10\n\x08\x66ile_url\x18\x02 \x01(\t\x12\x11\n\tfile_size\x18\x03 \x01(\x03\x12\x11\n\tfile_type\x18\x04 \x01(\t\x12\x0f\n\x07version\x18\x05 \x01(\t\x12\x0f\n\x07user_id\x18\x06 \x01(\x03\x12\x14\n\x0cservice_name\x18\x07 \x01(\t\x12\x18\n\x10sub_service_name\x18\x08 \x01(\t\"D\n\x18\x46ileMetadataListResponse\x12(\n\x05\x66iles\x18\x01 \x03(\x0b\x32\x19.cdn.FileMetadataResponse\"+\n\x13\x46ileContentResponse\x12\x14\n\x0c\x66ile_content\x18\x01 \x01(\x0c\"*\n\x12\x46ileStatusResponse\x12\x14\n\x0cis_available\x18\x01 \x01(\x08\x32\xdd\x03\n\nCDNService\x12>\n\x0fGetFileMetadata\x12\x10.cdn.FileRequest\x1a\x19.cdn.FileMetadataResponse\x12>\n\x0eGetFileContent\x12\x10.cdn.FileRequest\x1a\x18.cdn.FileContentResponse0\x01\x12K\n\x10\x41ssignToInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12:\n\rGetFileStatus\x12\x10.cdn.FileRequest\x1a\x17.cdn.FileStatusResponse\x12O\n\x14UnassignFromInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12\x30\n\nUploadFile\x12\t.cdn.File\x1a\x17.cdn.FileUploadResponse\x12\x43\n\nFilterFile\x12\x16.cdn.FilterFileRequest\x1a\x1d.cdn.FileMetadataListResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tcdn.proto\x12\x03\x63\x64n\"h\n\x04\x46ile\x12\x0c\n\x04\x66ile\x18\x01 \x01(\x0c\x12\x11\n\tfile_name\x18\x02 \x01(\t\x12\x14\n\x0cservice_name\x18\x03 \x01(\t\x12\x18\n\x10sub_service_name\x18\x04 \x01(\t\x12\x0f\n\x07user_id\x18\x05 \x01(\x03\"2\n\x12\x46ileUploadResponse\x12\x0e\n\x06result\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"\x93\x01\n\x15\x41ssignUnassignRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x14\n\x0cservice_name\x18\x02 \x01(\t\x12\x18\n\x10sub_service_name\x18\x03 \x01(\t\x12\x17\n\x0f\x63ontent_type_id\x18\x04 \x01(\x03\x12\x11\n\tobject_id\x18\x05 \x01(\x03\x12\x10\n\x08local_id\x18\x06 \x01(\x03\":\n\x16\x41ssignUnassignResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x0f\n\x07is_done\x18\x02 \x01(\x08\"\x1b\n\x0b\x46ileRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"\xa8\x01\n\x11\x46ilterFileRequest\x12\x11\n\tuuid_list\x18\x01 \x03(\t\x12\x19\n\x0cservice_name\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x1d\n\x10sub_service_name\x18\x03 \x01(\tH\x01\x88\x01\x01\x12\x14\n\x07user_id\x18\x04 \x01(\x03H\x02\x88\x01\x01\x42\x0f\n\r_service_nameB\x13\n\x11_sub_service_nameB\n\n\x08_user_id\"\xc1\x01\n\x14\x46ileMetadataResponse\x12\x11\n\tfile_name\x18\x01 \x01(\t\x12\x10\n\x08\x66ile_url\x18\x02 \x01(\t\x12\x11\n\tfile_size\x18\x03 \x01(\x03\x12\x11\n\tfile_type\x18\x04 \x01(\t\x12\x0f\n\x07version\x18\x05 \x01(\t\x12\x0f\n\x07user_id\x18\x06 \x01(\x03\x12\x14\n\x0cservice_name\x18\x07 \x01(\t\x12\x18\n\x10sub_service_name\x18\x08 \x01(\t\x12\x0c\n\x04uuid\x18\t \x01(\t\"D\n\x18\x46ileMetadataListResponse\x12(\n\x05\x66iles\x18\x01 \x03(\x0b\x32\x19.cdn.FileMetadataResponse\"+\n\x13\x46ileContentResponse\x12\x14\n\x0c\x66ile_content\x18\x01 \x01(\x0c\"*\n\x12\x46ileStatusResponse\x12\x14\n\x0cis_available\x18\x01 \x01(\x08\x32\xdd\x03\n\nCDNService\x12>\n\x0fGetFileMetadata\x12\x10.cdn.FileRequest\x1a\x19.cdn.FileMetadataResponse\x12>\n\x0eGetFileContent\x12\x10.cdn.FileRequest\x1a\x18.cdn.FileContentResponse0\x01\x12K\n\x10\x41ssignToInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12:\n\rGetFileStatus\x12\x10.cdn.FileRequest\x1a\x17.cdn.FileStatusResponse\x12O\n\x14UnassignFromInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12\x30\n\nUploadFile\x12\t.cdn.File\x1a\x17.cdn.FileUploadResponse\x12\x43\n\nFilterFile\x12\x16.cdn.FilterFileRequest\x1a\x1d.cdn.FileMetadataListResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -44,13 +44,13 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_FILTERFILEREQUEST']._serialized_start=416
   _globals['_FILTERFILEREQUEST']._serialized_end=584
   _globals['_FILEMETADATARESPONSE']._serialized_start=587
-  _globals['_FILEMETADATARESPONSE']._serialized_end=766
-  _globals['_FILEMETADATALISTRESPONSE']._serialized_start=768
-  _globals['_FILEMETADATALISTRESPONSE']._serialized_end=836
-  _globals['_FILECONTENTRESPONSE']._serialized_start=838
-  _globals['_FILECONTENTRESPONSE']._serialized_end=881
-  _globals['_FILESTATUSRESPONSE']._serialized_start=883
-  _globals['_FILESTATUSRESPONSE']._serialized_end=925
-  _globals['_CDNSERVICE']._serialized_start=928
-  _globals['_CDNSERVICE']._serialized_end=1405
+  _globals['_FILEMETADATARESPONSE']._serialized_end=780
+  _globals['_FILEMETADATALISTRESPONSE']._serialized_start=782
+  _globals['_FILEMETADATALISTRESPONSE']._serialized_end=850
+  _globals['_FILECONTENTRESPONSE']._serialized_start=852
+  _globals['_FILECONTENTRESPONSE']._serialized_end=895
+  _globals['_FILESTATUSRESPONSE']._serialized_start=897
+  _globals['_FILESTATUSRESPONSE']._serialized_end=939
+  _globals['_CDNSERVICE']._serialized_start=942
+  _globals['_CDNSERVICE']._serialized_end=1419
 # @@protoc_insertion_point(module_scope)

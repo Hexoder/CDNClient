@@ -189,6 +189,7 @@ class CDNClient:
         result = self.stub.UnassignFromInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
+    # TODO fix upload file
     def upload_file(self, file: bytes, file_name: str, service_name: str, app_name: str, model_name: str) -> dict:
 
         request = cdn_pb2.File(file=file, file_name=file_name, service_name=service_name, app_name=app_name,
