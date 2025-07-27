@@ -114,6 +114,8 @@ class CDNClient:
             path = result.get('temp_path', None)
             if path:
                 return path
+            return None
+        return None
 
     def _update_temp_path(self, image_id: str, temp_path: str) -> None:
         """Update only temp_path field for an existing metadata."""
@@ -177,7 +179,8 @@ class CDNClient:
         result = self.stub.AssignToInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    def unassign_from_instance(self, uuid: str, content_type_id: int, object_id: int, local_id: int | None = None) -> dict:
+    def unassign_from_instance(self, uuid: str, content_type_id: int, object_id: int,
+                               local_id: int | None = None) -> dict:
         request = cdn_pb2.AssignUnassignRequest(
             uuid=uuid,
             service_name=SERVICE_NAME,
@@ -194,6 +197,17 @@ class CDNClient:
                                model_name=model_name)
         result = self.stub.UploadFile(request)
         return MessageToDict(result)
+
+    def filter_file(self, service_name: str = None, sub_service_name: str = None, user_id: int = None,
+                    uuid_list: list[str] = None):
+        request = cdn_pb2.FilterFileRequest(
+            service_name=service_name,
+            sub_service_name=sub_service_name,
+            user_id=user_id,
+            uuid_list=uuid_list
+        )
+        result = self.stub.FilterFile(request)
+        return MessageToDict(result, preserving_proto_field_name=True)
 
     @property
     def service_name(self):
