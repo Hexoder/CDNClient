@@ -15,7 +15,7 @@ SUB_SERVICE_NAME = getattr(settings, "SUB_SERVICE_NAME")
 
 
 def get_secure_channel(server_domain):
-    cert_path = 'cdnservice.pem'
+    cert_path = f'cdnservice_{SERVICE_NAME}.pem'
 
     # Load server certificate
     with open(cert_path, "rb") as f:
@@ -25,7 +25,7 @@ def get_secure_channel(server_domain):
     credentials = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
 
     # Create a secure channel
-    return grpc.secure_channel(f"{server_domain}:50051", credentials)
+    return grpc.secure_channel(server_domain, credentials)
 
 
 def try_except(func):
@@ -177,8 +177,7 @@ class CDNClient:
         result = self.stub.AssignToInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    def unassign_from_instance(self, uuid: str, content_type_id: int, object_id: int,
-                               local_id: int | None = None) -> dict:
+    def unassign_from_instance(self, uuid: str, content_type_id: int, object_id: int, local_id: int | None = None) -> dict:
         request = cdn_pb2.AssignUnassignRequest(
             uuid=uuid,
             service_name=SERVICE_NAME,
@@ -189,24 +188,12 @@ class CDNClient:
         result = self.stub.UnassignFromInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    # TODO fix upload file
     def upload_file(self, file: bytes, file_name: str, service_name: str, app_name: str, model_name: str) -> dict:
 
         request = cdn_pb2.File(file=file, file_name=file_name, service_name=service_name, app_name=app_name,
                                model_name=model_name)
         result = self.stub.UploadFile(request)
         return MessageToDict(result)
-
-    def filter_file(self, service_name: str = None, sub_service_name: str = None, user_id: int = None,
-                    uuid_list: list[str] = None):
-        request = cdn_pb2.FilterFileRequest(
-            service_name=service_name,
-            sub_service_name=sub_service_name,
-            user_id=user_id,
-            uuid_list=uuid_list
-        )
-        result = self.stub.FilterFile(request)
-        return MessageToDict(result, preserving_proto_field_name=True)
 
     @property
     def service_name(self):
