@@ -2,14 +2,15 @@ from setuptools import setup, find_packages
 
 setup(
     name="cdn_package",
-    version="1.0.24",
+    version="1.0.24.1",
     packages=find_packages(),
     install_requires=[
         "grpcio",
         "grpcio-tools",
         "djangorestframework",
         "markdown",
-        "django-filter"
+        "django-filter",
+        "certifi"
     ],
     description="A gRPC-based CDN package for microservices",
     long_description=open("README.md").read(),
