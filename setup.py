@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="cdn_package",
-    version="1.0.24",
+    version="1.0.25",
     packages=find_packages(),
     install_requires=[
         "grpcio",

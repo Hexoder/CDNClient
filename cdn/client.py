@@ -112,7 +112,7 @@ class CDNClient:
         result = self._cdn_cache.get(key)
         if result:
             path = result.get('temp_path', None)
-            if path:
+            if path and Path(path).exists():
                 return path
             return None
         return None

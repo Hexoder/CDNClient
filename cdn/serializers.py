@@ -71,14 +71,18 @@ class FileSerializerMixin:
             return None
 
     def _serialize_multiple_files(self, file_id_uuid_dict: dict):
+
+        # TODO; change results to dictionary and store file_local_ids as it's key
+
         if not file_id_uuid_dict:
             return {}
-        results = []
+        results = []  # TODO; change to => results = {}
         for local_id, uuid in file_id_uuid_dict.items():
             try:
                 metadata = client.get_file_metadata(str(uuid))
                 if metadata:
                     results.append({str(local_id): metadata})
+                    # TODO: change to => results.update({str(local_id): metadata})
             except Exception as err:
                 print(err)
         return results
