@@ -7,8 +7,6 @@ import uuid
 from .utils import InfiniteInt, FileMaxedOutError
 from .client import CDNClient
 
-SERVICE_NAME = getattr(settings, "SERVICE_NAME")
-SUB_SERVICE_NAME = getattr(settings, "SUB_SERVICE_NAME")
 
 
 class FileAssociationMixin(models.Model):

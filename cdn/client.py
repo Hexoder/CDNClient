@@ -10,12 +10,9 @@ from django.conf import settings
 import tempfile
 from django.core.cache import caches
 
-SERVICE_NAME = getattr(settings, "SERVICE_NAME")
-SUB_SERVICE_NAME = getattr(settings, "SUB_SERVICE_NAME")
-
 
 def get_secure_channel(server_domain):
-    cert_path = f'cdnservice_{SERVICE_NAME}.pem'
+    cert_path = 'cdnservice.pem'
 
     # Load server certificate
     with open(cert_path, "rb") as f:
@@ -47,26 +44,15 @@ def try_except(func):
 class CDNClient:
     _instance = None
     _lock = Lock()
-    _service_name = None
-    _sub_service_name = None
     _conn_address = None
     _cdn_cache = None
     _cache_timeout = 60 * 60 * 24  # 24 hours default cache timeout
 
     def __new__(cls):
         server_address = getattr(settings, "CDN_GRPC_ADDRESS", "localhost")
-        service_name = getattr(settings, "SERVICE_NAME", None)
-        sub_service_name = getattr(settings, "SUB_SERVICE_NAME", None)
 
-        if not service_name:
-            raise Exception("Define SERVICE_NAME in django settings")
-        if not sub_service_name:
-            raise Exception("Define SUB_SERVICE_NAME in django settings")
         if not server_address:
             raise Exception("set CDN_GRPC_ADDRESS in django settings")
-
-        cls._service_name = service_name
-        cls._sub_service_name = sub_service_name
         cls._conn_address = f"{server_address}:50051"
 
         with cls._lock:
@@ -79,8 +65,8 @@ class CDNClient:
                 except KeyError:
                     raise Exception("setup new redis cache named cdn [with desired redis db] ")
 
-                cls._instance.channel = get_secure_channel(server_address)
-                # cls._instance.channel = grpc.insecure_channel(cls._conn_address)
+                # cls._instance.channel = get_secure_channel(server_address)
+                cls._instance.channel = grpc.insecure_channel(cls._conn_address)
 
                 cls._instance.stub = cdn_pb2_grpc.CDNServiceStub(cls._instance.channel)
 
@@ -171,8 +157,6 @@ class CDNClient:
     def assign_to_instance(self, uuid: str, content_type_id: int, object_id: int, local_id: int | None = None) -> dict:
         request = cdn_pb2.AssignUnassignRequest(
             uuid=uuid,
-            service_name=SERVICE_NAME,
-            sub_service_name=SUB_SERVICE_NAME,
             content_type_id=content_type_id,
             object_id=object_id,
             local_id=local_id)
@@ -183,36 +167,24 @@ class CDNClient:
                                local_id: int | None = None) -> dict:
         request = cdn_pb2.AssignUnassignRequest(
             uuid=uuid,
-            service_name=SERVICE_NAME,
-            sub_service_name=SUB_SERVICE_NAME,
             content_type_id=content_type_id,
             object_id=object_id,
             local_id=local_id)
         result = self.stub.UnassignFromInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    def upload_file(self, file: bytes, file_name: str, service_name: str, app_name: str, model_name: str) -> dict:
+    def upload_file(self, file: bytes, file_name: str, model_name: str) -> dict:
 
-        request = cdn_pb2.File(file=file, file_name=file_name, service_name=service_name, app_name=app_name,
-                               model_name=model_name)
+        request = cdn_pb2.File(file=file, file_name=file_name, model_name=model_name)
         result = self.stub.UploadFile(request)
         return MessageToDict(result)
 
-    def filter_file(self, service_name: str = None, sub_service_name: str = None, user_id: int = None,
+    def filter_file(self, user_id: int = None,
                     uuid_list: list[str] = None):
         request = cdn_pb2.FilterFileRequest(
-            service_name=service_name,
-            sub_service_name=sub_service_name,
             user_id=user_id,
             uuid_list=uuid_list
         )
         result = self.stub.FilterFile(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    @property
-    def service_name(self):
-        return self._service_name
-
-    @property
-    def sub_service_name(self):
-        return self._sub_service_name
