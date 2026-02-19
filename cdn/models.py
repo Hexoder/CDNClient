@@ -43,6 +43,15 @@ class SingleFileAssociationMixin(FileAssociationMixin):
     def is_file_filled(self):
         return bool(self.file)
 
+    def hls_status(self):
+        return self.client.hls_status(uuid=str(self.file))
+
+    def hls_url(self):
+        return self.client.hls_url(uuid=str(self.file))
+
+    def prepare_hls(self):
+        return self.client.prepare_hls(uuid=str(self.file))
+
     def handle_single_file_change(self, old_file: str, new_file: str):
 
         print(f"Single file changed from {old_file} to {new_file}")
@@ -145,6 +154,25 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
     def are_files_filled(self):
         """Check if there are any files."""
         return bool(self.files)
+
+    def hls_status(self, *,uuid=None, local_id=None):
+        uuid = uuid or self._get_cdnfileid_by_local_id(local_id)
+        if not uuid:
+            return "required at least one arg <uuid , local_id>"
+        return self.client.hls_status(uuid=str(uuid))
+
+    def hls_url(self, *, uuid=None, local_id=None):
+        uuid = uuid or self._get_cdnfileid_by_local_id(local_id)
+        if not uuid:
+            return None
+        return self.client.hls_url(uuid=str(uuid))
+
+    def prepare_hls(self, uuid=None, local_id=None):
+        uuid = uuid or self._get_cdnfileid_by_local_id(local_id)
+        if not uuid:
+            return None
+        return self.client.prepare_hls(uuid=str(uuid))
+
 
     def handle_multiple_files_change(self, old_files, new_files):
         """Handle file changes: additions and removals."""

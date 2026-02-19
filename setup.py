@@ -2,11 +2,11 @@ from setuptools import setup, find_packages
 
 setup(
     name="cdn_package",
-    version="1.0.25",
+    version="1.1",
     packages=find_packages(),
     install_requires=[
-        "grpcio",
-        "grpcio-tools",
+        "grpcio==1.78.0",
+        "grpcio-tools==1.78.0",
         "djangorestframework",
         "markdown",
         "django-filter"

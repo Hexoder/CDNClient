@@ -191,10 +191,9 @@ class CDNClient:
         result = self.stub.UnassignFromInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    def upload_file(self, file: bytes, file_name: str, service_name: str, app_name: str, model_name: str) -> dict:
+    def upload_file(self, file: bytes, file_name: str, service_name: str) -> dict:
 
-        request = cdn_pb2.File(file=file, file_name=file_name, service_name=service_name, app_name=app_name,
-                               model_name=model_name)
+        request = cdn_pb2.File(file=file, file_name=file_name, service_name=service_name)
         result = self.stub.UploadFile(request)
         return MessageToDict(result)
 
@@ -207,6 +206,25 @@ class CDNClient:
             uuid_list=uuid_list
         )
         result = self.stub.FilterFile(request)
+        return MessageToDict(result, preserving_proto_field_name=True)
+
+    def hls_status(self, uuid):
+        request = cdn_pb2.FileRequest(uuid=uuid)
+        result = self.stub.HLSStatus(request)
+        return MessageToDict(result, preserving_proto_field_name=True)
+
+    def hls_url(self, uuid):
+        key = self._make_key(f"stream:{uuid}")
+        result = self._cdn_cache.get(key)
+        if result is None:
+            result = self.hls_status(uuid).get('stream_url', None)
+            self._cdn_cache.set(key, result, timeout=self._cache_timeout)
+
+        return result
+
+    def prepare_hls(self, uuid):
+        request = cdn_pb2.FileRequest(uuid=uuid)
+        result = self.stub.PrepareHLS(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
     @property
