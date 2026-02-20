@@ -108,6 +108,12 @@ class SingleFileAssociationMixin(FileAssociationMixin):
         result = self.client.download_file(str(self.file), output_file_path=output_path, file_name=file_name)
         return result
 
+    def file_url(self, base_url):
+        if self.file:
+            if file_data := self.get_file_metadata():
+                return base_url + file_data["file_url"]
+        return None
+
 
 class MultipleFileAssociationMixin(FileAssociationMixin):
     files = models.JSONField(default=list, blank=True)
@@ -155,7 +161,7 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
         """Check if there are any files."""
         return bool(self.files)
 
-    def hls_status(self, *,uuid=None, local_id=None):
+    def hls_status(self, *, uuid=None, local_id=None):
         uuid = uuid or self._get_cdnfileid_by_local_id(local_id)
         if not uuid:
             return "required at least one arg <uuid , local_id>"
@@ -172,7 +178,6 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
         if not uuid:
             return None
         return self.client.prepare_hls(uuid=str(uuid))
-
 
     def handle_multiple_files_change(self, old_files, new_files):
         """Handle file changes: additions and removals."""
