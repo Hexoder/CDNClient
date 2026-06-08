@@ -11,20 +11,6 @@ import tempfile
 from django.core.cache import caches
 
 
-def get_secure_channel(server_domain):
-    cert_path = 'cdnservice.pem'
-
-    # Load server certificate
-    with open(cert_path, "rb") as f:
-        trusted_certs = f.read()
-
-    # Create SSL/TLS credentials
-    credentials = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
-
-    # Create a secure channel
-    return grpc.secure_channel(server_domain, credentials)
-
-
 def try_except(func):
     def wrapper(*args, **kwargs):
         try:
@@ -50,18 +36,20 @@ class CDNClient:
 
     def __new__(cls):
         server_address = getattr(settings, "CDN_GRPC_ADDRESS", "localhost")
+        server_port = getattr(settings, "CDN_GRPC_SERVER_PORT", 50051)
+        server_url = f"{server_address}:{server_port}"
 
         if not server_address:
             raise Exception("set CDN_GRPC_ADDRESS in django settings")
-        cls._conn_address = f"{server_address}:50051"
+        cls._conn_address = f"{server_address}:50052"
 
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super(CDNClient, cls).__new__(cls)
 
                 try:
-                    cdn_cache = caches['cdn']
-                    cls._cdn_cache = cdn_cache
+                    cache = caches['cdn']
+                    cls._cdn_cache = cache
                 except KeyError:
                     raise Exception("setup new redis cache named cdn [with desired redis db] ")
 
@@ -78,23 +66,24 @@ class CDNClient:
     def __exit__(self, exc_type, exc_value, traceback):
         self.channel.close()
 
-    def _make_key(self, image_id: str) -> str:
+    @staticmethod
+    def _make_key(file_id: str) -> str:
         """Make a namespaced cache key."""
-        return f"cdn:{image_id}"
+        return f"cdn:{file_id}"
 
-    def _get_metadata(self, image_id: str) -> dict | None:
+    def _get_metadata(self, file_id: str) -> dict | None:
         """Get metadata for an image_id."""
-        key = self._make_key(image_id)
+        key = self._make_key(file_id)
         return self._cdn_cache.get(key)
 
-    def _set_metadata(self, image_id: str, metadata: dict) -> None:
+    def _set_metadata(self, file_id: str, metadata: dict) -> None:
         """Set or overwrite metadata for an image_id."""
-        key = self._make_key(image_id)
+        key = self._make_key(file_id)
         self._cdn_cache.set(key, metadata, timeout=self._cache_timeout)
 
-    def _get_last_temp(self, image_id: str) -> str | None:
+    def _get_last_temp(self, file_id: str) -> str | None:
         """Get downloaded path for an image_id."""
-        key = self._make_key(image_id)
+        key = self._make_key(file_id)
         result = self._cdn_cache.get(key)
         if result:
             path = result.get('temp_path', None)
@@ -103,9 +92,9 @@ class CDNClient:
             return None
         return None
 
-    def _update_temp_path(self, image_id: str, temp_path: str) -> None:
+    def _update_temp_path(self, file_id: str, temp_path: str) -> None:
         """Update only temp_path field for an existing metadata."""
-        key = self._make_key(image_id)
+        key = self._make_key(file_id)
         metadata = self._cdn_cache.get(key)
 
         if metadata is None:
@@ -142,6 +131,10 @@ class CDNClient:
                     raise
 
         else:
+            path = Path(output_file_path)
+            if path.exists():
+                print(f"File already exists: {path}")
+                path.name.split('_')[-1]
             with open(output_file_path, 'wb') as f:
 
                 for chunk in self.stub.GetFileContent(request):
@@ -173,9 +166,10 @@ class CDNClient:
         result = self.stub.UnassignFromInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    def upload_file(self, file: bytes, file_name: str, model_name: str) -> dict:
+    def upload_file(self, file: bytes, file_name: str, app_name: str, model_name: str) -> dict:
 
-        request = cdn_pb2.File(file=file, file_name=file_name, model_name=model_name)
+        request = cdn_pb2.File(file=file, file_name=file_name, app_name=app_name,
+                               model_name=model_name)
         result = self.stub.UploadFile(request)
         return MessageToDict(result)
 
