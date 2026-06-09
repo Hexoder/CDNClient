@@ -5,7 +5,7 @@ import warnings
 
 from . import cdn_pb2 as cdn__pb2
 
-GRPC_GENERATED_VERSION = '1.70.0'
+GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in cdn_pb2_grpc.py depends on'
+        + ' but the generated code in cdn_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -69,6 +69,16 @@ class CDNServiceStub(object):
                 '/cdn.CDNService/FilterFile',
                 request_serializer=cdn__pb2.FilterFileRequest.SerializeToString,
                 response_deserializer=cdn__pb2.FileMetadataListResponse.FromString,
+                _registered_method=True)
+        self.HLSStatus = channel.unary_unary(
+                '/cdn.CDNService/HLSStatus',
+                request_serializer=cdn__pb2.FileRequest.SerializeToString,
+                response_deserializer=cdn__pb2.HLSStatusResponse.FromString,
+                _registered_method=True)
+        self.PrepareHLS = channel.unary_unary(
+                '/cdn.CDNService/PrepareHLS',
+                request_serializer=cdn__pb2.FileRequest.SerializeToString,
+                response_deserializer=cdn__pb2.HLSStatusResponse.FromString,
                 _registered_method=True)
 
 
@@ -122,6 +132,18 @@ class CDNServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def HLSStatus(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def PrepareHLS(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_CDNServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -159,6 +181,16 @@ def add_CDNServiceServicer_to_server(servicer, server):
                     servicer.FilterFile,
                     request_deserializer=cdn__pb2.FilterFileRequest.FromString,
                     response_serializer=cdn__pb2.FileMetadataListResponse.SerializeToString,
+            ),
+            'HLSStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.HLSStatus,
+                    request_deserializer=cdn__pb2.FileRequest.FromString,
+                    response_serializer=cdn__pb2.HLSStatusResponse.SerializeToString,
+            ),
+            'PrepareHLS': grpc.unary_unary_rpc_method_handler(
+                    servicer.PrepareHLS,
+                    request_deserializer=cdn__pb2.FileRequest.FromString,
+                    response_serializer=cdn__pb2.HLSStatusResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -351,6 +383,60 @@ class CDNService(object):
             '/cdn.CDNService/FilterFile',
             cdn__pb2.FilterFileRequest.SerializeToString,
             cdn__pb2.FileMetadataListResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def HLSStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/cdn.CDNService/HLSStatus',
+            cdn__pb2.FileRequest.SerializeToString,
+            cdn__pb2.HLSStatusResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def PrepareHLS(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/cdn.CDNService/PrepareHLS',
+            cdn__pb2.FileRequest.SerializeToString,
+            cdn__pb2.HLSStatusResponse.FromString,
             options,
             channel_credentials,
             insecure,

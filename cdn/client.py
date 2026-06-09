@@ -182,3 +182,22 @@ class CDNClient:
         result = self.stub.FilterFile(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
+    def hls_status(self, uuid):
+        request = cdn_pb2.FileRequest(uuid=uuid)
+        result = self.stub.HLSStatus(request)
+        return MessageToDict(result, preserving_proto_field_name=True)
+
+    def hls_url(self, uuid):
+        key = self._make_key(f"stream:{uuid}")
+        result = self._cdn_cache.get(key)
+        if result is None:
+            result = self.hls_status(uuid).get('stream_url', None)
+            self._cdn_cache.set(key, result, timeout=self._cache_timeout)
+
+        return result
+
+    def prepare_hls(self, uuid):
+        request = cdn_pb2.FileRequest(uuid=uuid)
+        result = self.stub.PrepareHLS(request)
+        return MessageToDict(result, preserving_proto_field_name=True)
+
