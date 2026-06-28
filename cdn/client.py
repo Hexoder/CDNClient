@@ -1,14 +1,14 @@
+import tempfile
 from pathlib import Path
+from threading import Lock
 
 import grpc
+from django.conf import settings
+from django.core.cache import caches
+from google.protobuf.json_format import MessageToDict
 
 from .decorators import cdn_cache
 from .proto import cdn_pb2, cdn_pb2_grpc
-from threading import Lock
-from google.protobuf.json_format import MessageToDict
-from django.conf import settings
-import tempfile
-from django.core.cache import caches
 
 
 def try_except(func):
@@ -35,13 +35,12 @@ class CDNClient:
     _cache_timeout = 60 * 60 * 24  # 24 hours default cache timeout
 
     def __new__(cls):
-        server_address = getattr(settings, "CDN_GRPC_ADDRESS", "localhost")
-        server_port = getattr(settings, "CDN_GRPC_SERVER_PORT", 50051)
-        server_url = f"{server_address}:{server_port}"
+        server_address = getattr(settings, "CDN_GRPC_ADDRESS")
 
         if not server_address:
-            raise Exception("set CDN_GRPC_ADDRESS in django settings")
-        cls._conn_address = f"{server_address}:50052"
+            raise Exception("set CDN_GRPC_ADDRESS in django settings (CDN_GRPC_ADDRESS='localhost:50051')")
+
+        cls._conn_address = server_address
 
         with cls._lock:
             if cls._instance is None:
@@ -134,7 +133,6 @@ class CDNClient:
             path = Path(output_file_path)
             if path.exists():
                 print(f"File already exists: {path}")
-                path.name.split('_')[-1]
             with open(output_file_path, 'wb') as f:
 
                 for chunk in self.stub.GetFileContent(request):
@@ -147,30 +145,51 @@ class CDNClient:
         result = self.stub.GetFileStatus(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    def assign_to_instance(self, uuid: str, content_type_id: int, object_id: int, local_id: int | None = None) -> dict:
+    def assign_to_instance(self, uuid: str,
+                           content_type_id: int,
+                           object_id: int,
+                           requested_user_id: int | None = None,
+                           local_id: int | None = None) -> dict:
+
         request = cdn_pb2.AssignUnassignRequest(
             uuid=uuid,
             content_type_id=content_type_id,
             object_id=object_id,
-            local_id=local_id)
+            local_id=local_id,
+            requested_user_id=requested_user_id)
+
         result = self.stub.AssignToInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    def unassign_from_instance(self, uuid: str, content_type_id: int, object_id: int,
+    def unassign_from_instance(self, uuid: str,
+                               content_type_id: int,
+                               object_id: int,
+                               requested_user_id: int | None = None,
                                local_id: int | None = None) -> dict:
+
         request = cdn_pb2.AssignUnassignRequest(
             uuid=uuid,
             content_type_id=content_type_id,
             object_id=object_id,
-            local_id=local_id)
+            local_id=local_id,
+            requested_user_id=requested_user_id)
+
         result = self.stub.UnassignFromInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    def upload_file(self, file: bytes, file_name: str, app_name: str, model_name: str) -> dict:
+    def upload_file(self, file: bytes, file_name: str, requested_user_id=0, chunk_size: int = 1024 * 1024) -> dict:
+        def chunk_generator():
+            # Send metadata in the first chunk
+            first = True
+            for i in range(0, len(file), chunk_size):
+                chunk = file[i:i + chunk_size]
+                if first:
+                    yield cdn_pb2.FileChunk(data=chunk, file_name=file_name, user_id=requested_user_id)
+                    first = False
+                else:
+                    yield cdn_pb2.FileChunk(data=chunk)
 
-        request = cdn_pb2.File(file=file, file_name=file_name, app_name=app_name,
-                               model_name=model_name)
-        result = self.stub.UploadFile(request)
+        result = self.stub.UploadFile(chunk_generator())
         return MessageToDict(result)
 
     def filter_file(self, user_id: int = None,
@@ -200,4 +219,3 @@ class CDNClient:
         request = cdn_pb2.FileRequest(uuid=uuid)
         result = self.stub.PrepareHLS(request)
         return MessageToDict(result, preserving_proto_field_name=True)
-

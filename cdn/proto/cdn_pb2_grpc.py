@@ -60,9 +60,9 @@ class CDNServiceStub(object):
                 request_serializer=cdn__pb2.AssignUnassignRequest.SerializeToString,
                 response_deserializer=cdn__pb2.AssignUnassignResponse.FromString,
                 _registered_method=True)
-        self.UploadFile = channel.unary_unary(
+        self.UploadFile = channel.stream_unary(
                 '/cdn.CDNService/UploadFile',
-                request_serializer=cdn__pb2.File.SerializeToString,
+                request_serializer=cdn__pb2.FileChunk.SerializeToString,
                 response_deserializer=cdn__pb2.FileUploadResponse.FromString,
                 _registered_method=True)
         self.FilterFile = channel.unary_unary(
@@ -120,7 +120,7 @@ class CDNServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def UploadFile(self, request, context):
+    def UploadFile(self, request_iterator, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -172,9 +172,9 @@ def add_CDNServiceServicer_to_server(servicer, server):
                     request_deserializer=cdn__pb2.AssignUnassignRequest.FromString,
                     response_serializer=cdn__pb2.AssignUnassignResponse.SerializeToString,
             ),
-            'UploadFile': grpc.unary_unary_rpc_method_handler(
+            'UploadFile': grpc.stream_unary_rpc_method_handler(
                     servicer.UploadFile,
-                    request_deserializer=cdn__pb2.File.FromString,
+                    request_deserializer=cdn__pb2.FileChunk.FromString,
                     response_serializer=cdn__pb2.FileUploadResponse.SerializeToString,
             ),
             'FilterFile': grpc.unary_unary_rpc_method_handler(
@@ -340,7 +340,7 @@ class CDNService(object):
             _registered_method=True)
 
     @staticmethod
-    def UploadFile(request,
+    def UploadFile(request_iterator,
             target,
             options=(),
             channel_credentials=None,
@@ -350,11 +350,11 @@ class CDNService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
+        return grpc.experimental.stream_unary(
+            request_iterator,
             target,
             '/cdn.CDNService/UploadFile',
-            cdn__pb2.File.SerializeToString,
+            cdn__pb2.FileChunk.SerializeToString,
             cdn__pb2.FileUploadResponse.FromString,
             options,
             channel_credentials,

@@ -1,12 +1,13 @@
+import uuid
 from pathlib import Path
+
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.conf import settings
-import uuid
-from .utils import InfiniteInt, FileMaxedOutError
-from .client import CDNClient
 
+from .client import CDNClient
+from .utils import InfiniteInt, FileMaxedOutError
 
 
 class FileAssociationMixin(models.Model):
