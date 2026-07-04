@@ -139,9 +139,9 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
 
     @property
     def files_detailed(self):
-        keys = self.files.keys()
-        values = map(lambda u: self.client.get_file_metadata(str(u)), self.files.values())
-        return dict(zip(keys, values))
+        from .serializers import FileSerializerMixin
+        serializer = FileSerializerMixin()
+        return serializer._serialize_multiple_files(self._files)
 
     # snapshot the last-synced state on load
     @classmethod
