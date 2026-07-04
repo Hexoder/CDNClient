@@ -110,12 +110,12 @@ class CDNClient:
         return MessageToDict(result, preserving_proto_field_name=True)
 
     @cdn_cache(_get_last_temp, _update_temp_path)
-    def download_file(self, uuid: str, output_file_path: str = None) -> str:
+    def download_file(self, uuid: str, output_dir: str = None) -> str:
         request = cdn_pb2.FileRequest(uuid=uuid)
         file_data = self.get_file_metadata(uuid)
         file_name = file_data.get('file_name')
 
-        if not output_file_path:
+        if not output_dir:
             with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file_name}") as temp_file:
 
                 temp_file_path = temp_file.name
@@ -132,7 +132,7 @@ class CDNClient:
                     raise
 
         else:
-            path = Path(output_file_path) / file_name
+            path = Path(output_dir) / file_name
             if path.exists():
                 print(f"File already exists: {path} , replacing...")
             with open(path, 'wb') as f:
@@ -151,13 +151,13 @@ class CDNClient:
                            content_type_id: int,
                            object_id: int,
                            requested_user_id: int | None = None,
-                           local_id: int | None = None) -> dict:
+                           local_key: int | None = None) -> dict:
 
         request = cdn_pb2.AssignUnassignRequest(
             uuid=uuid,
             content_type_id=content_type_id,
             object_id=object_id,
-            local_id=local_id,
+            local_key=local_key,
             requested_user_id=requested_user_id)
 
         result = self.stub.AssignToInstance(request)
@@ -167,13 +167,13 @@ class CDNClient:
                                content_type_id: int,
                                object_id: int,
                                requested_user_id: int | None = None,
-                               local_id: int | None = None) -> dict:
+                               local_key: int | None = None) -> dict:
 
         request = cdn_pb2.AssignUnassignRequest(
             uuid=uuid,
             content_type_id=content_type_id,
             object_id=object_id,
-            local_id=local_id,
+            local_key=local_key,
             requested_user_id=requested_user_id)
 
         result = self.stub.UnassignFromInstance(request)

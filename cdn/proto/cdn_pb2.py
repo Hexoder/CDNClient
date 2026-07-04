@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tcdn.proto\x12\x03\x63\x64n\x1a\x1cgoogle/protobuf/struct.proto\"\x93\x01\n\tFileChunk\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x11\n\tfile_name\x18\x02 \x01(\t\x12\x0f\n\x07user_id\x18\x03 \x01(\x03\x12\x11\n\tis_public\x18\x04 \x01(\x08\x12\x16\n\x0e\x61\x63\x63\x65ssed_users\x18\x05 \x03(\x03\x12)\n\x08metadata\x18\x06 \x01(\x0b\x32\x17.google.protobuf.Struct\"2\n\x12\x46ileUploadResponse\x12\x0e\n\x06result\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"~\n\x15\x41ssignUnassignRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x17\n\x0f\x63ontent_type_id\x18\x02 \x01(\x03\x12\x11\n\tobject_id\x18\x03 \x01(\x03\x12\x10\n\x08local_id\x18\x04 \x01(\x03\x12\x19\n\x11requested_user_id\x18\x05 \x01(\x03\":\n\x16\x41ssignUnassignResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x0f\n\x07is_done\x18\x02 \x01(\x08\"\x1b\n\x0b\x46ileRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"H\n\x11\x46ilterFileRequest\x12\x11\n\tuuid_list\x18\x01 \x03(\t\x12\x14\n\x07user_id\x18\x02 \x01(\x03H\x00\x88\x01\x01\x42\n\n\x08_user_id\"\xe7\x01\n\x14\x46ileMetadataResponse\x12\x11\n\tfile_name\x18\x01 \x01(\t\x12\x10\n\x08\x66ile_url\x18\x02 \x01(\t\x12\x11\n\tfile_size\x18\x03 \x01(\x03\x12\x11\n\tfile_type\x18\x04 \x01(\t\x12\x0f\n\x07version\x18\x05 \x01(\t\x12\x0f\n\x07user_id\x18\x06 \x01(\x03\x12\x0c\n\x04uuid\x18\x07 \x01(\t\x12)\n\x08metadata\x18\x08 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x11\n\tis_public\x18\t \x01(\x08\x12\x16\n\x0e\x61\x63\x63\x65ssed_users\x18\n \x03(\x03\"D\n\x18\x46ileMetadataListResponse\x12(\n\x05\x66iles\x18\x01 \x03(\x0b\x32\x19.cdn.FileMetadataResponse\"+\n\x13\x46ileContentResponse\x12\x14\n\x0c\x66ile_content\x18\x01 \x01(\x0c\"*\n\x12\x46ileStatusResponse\x12\x14\n\x0cis_available\x18\x01 \x01(\x08\":\n\tStreamUrl\x12\x0f\n\x07_master\x18\x01 \x01(\t\x12\r\n\x05_360p\x18\x02 \x01(\t\x12\r\n\x05_720p\x18\x03 \x01(\t\"\xa9\x01\n\x11HLSStatusResponse\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x12\n\ncreated_at\x18\x02 \x01(\t\x12\x12\n\nstarted_at\x18\x03 \x01(\t\x12\x13\n\x0b\x66inished_at\x18\x04 \x01(\t\x12\x0f\n\x07message\x18\x05 \x01(\t\x12\'\n\nstream_url\x18\x06 \x01(\x0b\x32\x0e.cdn.StreamUrlH\x00\x88\x01\x01\x42\r\n\x0b_stream_url2\xd3\x04\n\nCDNService\x12>\n\x0fGetFileMetadata\x12\x10.cdn.FileRequest\x1a\x19.cdn.FileMetadataResponse\x12>\n\x0eGetFileContent\x12\x10.cdn.FileRequest\x1a\x18.cdn.FileContentResponse0\x01\x12K\n\x10\x41ssignToInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12:\n\rGetFileStatus\x12\x10.cdn.FileRequest\x1a\x17.cdn.FileStatusResponse\x12O\n\x14UnassignFromInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12\x37\n\nUploadFile\x12\x0e.cdn.FileChunk\x1a\x17.cdn.FileUploadResponse(\x01\x12\x43\n\nFilterFile\x12\x16.cdn.FilterFileRequest\x1a\x1d.cdn.FileMetadataListResponse\x12\x35\n\tHLSStatus\x12\x10.cdn.FileRequest\x1a\x16.cdn.HLSStatusResponse\x12\x36\n\nPrepareHLS\x12\x10.cdn.FileRequest\x1a\x16.cdn.HLSStatusResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tcdn.proto\x12\x03\x63\x64n\x1a\x1cgoogle/protobuf/struct.proto\"\x93\x01\n\tFileChunk\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x11\n\tfile_name\x18\x02 \x01(\t\x12\x0f\n\x07user_id\x18\x03 \x01(\x03\x12\x11\n\tis_public\x18\x04 \x01(\x08\x12\x16\n\x0e\x61\x63\x63\x65ssed_users\x18\x05 \x03(\x03\x12)\n\x08metadata\x18\x06 \x01(\x0b\x32\x17.google.protobuf.Struct\"2\n\x12\x46ileUploadResponse\x12\x0e\n\x06result\x18\x01 \x01(\t\x12\x0c\n\x04uuid\x18\x02 \x01(\t\"\x7f\n\x15\x41ssignUnassignRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x17\n\x0f\x63ontent_type_id\x18\x02 \x01(\x03\x12\x11\n\tobject_id\x18\x03 \x01(\x03\x12\x11\n\tlocal_key\x18\x04 \x01(\t\x12\x19\n\x11requested_user_id\x18\x05 \x01(\x03\":\n\x16\x41ssignUnassignResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x0f\n\x07is_done\x18\x02 \x01(\x08\"\x1b\n\x0b\x46ileRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"H\n\x11\x46ilterFileRequest\x12\x11\n\tuuid_list\x18\x01 \x03(\t\x12\x14\n\x07user_id\x18\x02 \x01(\x03H\x00\x88\x01\x01\x42\n\n\x08_user_id\"\xe7\x01\n\x14\x46ileMetadataResponse\x12\x11\n\tfile_name\x18\x01 \x01(\t\x12\x10\n\x08\x66ile_url\x18\x02 \x01(\t\x12\x11\n\tfile_size\x18\x03 \x01(\x03\x12\x11\n\tfile_type\x18\x04 \x01(\t\x12\x0f\n\x07version\x18\x05 \x01(\t\x12\x0f\n\x07user_id\x18\x06 \x01(\x03\x12\x0c\n\x04uuid\x18\x07 \x01(\t\x12)\n\x08metadata\x18\x08 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x11\n\tis_public\x18\t \x01(\x08\x12\x16\n\x0e\x61\x63\x63\x65ssed_users\x18\n \x03(\x03\"D\n\x18\x46ileMetadataListResponse\x12(\n\x05\x66iles\x18\x01 \x03(\x0b\x32\x19.cdn.FileMetadataResponse\"+\n\x13\x46ileContentResponse\x12\x14\n\x0c\x66ile_content\x18\x01 \x01(\x0c\"*\n\x12\x46ileStatusResponse\x12\x14\n\x0cis_available\x18\x01 \x01(\x08\":\n\tStreamUrl\x12\x0f\n\x07_master\x18\x01 \x01(\t\x12\r\n\x05_360p\x18\x02 \x01(\t\x12\r\n\x05_720p\x18\x03 \x01(\t\"\xa9\x01\n\x11HLSStatusResponse\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x12\n\ncreated_at\x18\x02 \x01(\t\x12\x12\n\nstarted_at\x18\x03 \x01(\t\x12\x13\n\x0b\x66inished_at\x18\x04 \x01(\t\x12\x0f\n\x07message\x18\x05 \x01(\t\x12\'\n\nstream_url\x18\x06 \x01(\x0b\x32\x0e.cdn.StreamUrlH\x00\x88\x01\x01\x42\r\n\x0b_stream_url2\xd3\x04\n\nCDNService\x12>\n\x0fGetFileMetadata\x12\x10.cdn.FileRequest\x1a\x19.cdn.FileMetadataResponse\x12>\n\x0eGetFileContent\x12\x10.cdn.FileRequest\x1a\x18.cdn.FileContentResponse0\x01\x12K\n\x10\x41ssignToInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12:\n\rGetFileStatus\x12\x10.cdn.FileRequest\x1a\x17.cdn.FileStatusResponse\x12O\n\x14UnassignFromInstance\x12\x1a.cdn.AssignUnassignRequest\x1a\x1b.cdn.AssignUnassignResponse\x12\x37\n\nUploadFile\x12\x0e.cdn.FileChunk\x1a\x17.cdn.FileUploadResponse(\x01\x12\x43\n\nFilterFile\x12\x16.cdn.FilterFileRequest\x1a\x1d.cdn.FileMetadataListResponse\x12\x35\n\tHLSStatus\x12\x10.cdn.FileRequest\x1a\x16.cdn.HLSStatusResponse\x12\x36\n\nPrepareHLS\x12\x10.cdn.FileRequest\x1a\x16.cdn.HLSStatusResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -37,25 +37,25 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_FILEUPLOADRESPONSE']._serialized_start=198
   _globals['_FILEUPLOADRESPONSE']._serialized_end=248
   _globals['_ASSIGNUNASSIGNREQUEST']._serialized_start=250
-  _globals['_ASSIGNUNASSIGNREQUEST']._serialized_end=376
-  _globals['_ASSIGNUNASSIGNRESPONSE']._serialized_start=378
-  _globals['_ASSIGNUNASSIGNRESPONSE']._serialized_end=436
-  _globals['_FILEREQUEST']._serialized_start=438
-  _globals['_FILEREQUEST']._serialized_end=465
-  _globals['_FILTERFILEREQUEST']._serialized_start=467
-  _globals['_FILTERFILEREQUEST']._serialized_end=539
-  _globals['_FILEMETADATARESPONSE']._serialized_start=542
-  _globals['_FILEMETADATARESPONSE']._serialized_end=773
-  _globals['_FILEMETADATALISTRESPONSE']._serialized_start=775
-  _globals['_FILEMETADATALISTRESPONSE']._serialized_end=843
-  _globals['_FILECONTENTRESPONSE']._serialized_start=845
-  _globals['_FILECONTENTRESPONSE']._serialized_end=888
-  _globals['_FILESTATUSRESPONSE']._serialized_start=890
-  _globals['_FILESTATUSRESPONSE']._serialized_end=932
-  _globals['_STREAMURL']._serialized_start=934
-  _globals['_STREAMURL']._serialized_end=992
-  _globals['_HLSSTATUSRESPONSE']._serialized_start=995
-  _globals['_HLSSTATUSRESPONSE']._serialized_end=1164
-  _globals['_CDNSERVICE']._serialized_start=1167
-  _globals['_CDNSERVICE']._serialized_end=1762
+  _globals['_ASSIGNUNASSIGNREQUEST']._serialized_end=377
+  _globals['_ASSIGNUNASSIGNRESPONSE']._serialized_start=379
+  _globals['_ASSIGNUNASSIGNRESPONSE']._serialized_end=437
+  _globals['_FILEREQUEST']._serialized_start=439
+  _globals['_FILEREQUEST']._serialized_end=466
+  _globals['_FILTERFILEREQUEST']._serialized_start=468
+  _globals['_FILTERFILEREQUEST']._serialized_end=540
+  _globals['_FILEMETADATARESPONSE']._serialized_start=543
+  _globals['_FILEMETADATARESPONSE']._serialized_end=774
+  _globals['_FILEMETADATALISTRESPONSE']._serialized_start=776
+  _globals['_FILEMETADATALISTRESPONSE']._serialized_end=844
+  _globals['_FILECONTENTRESPONSE']._serialized_start=846
+  _globals['_FILECONTENTRESPONSE']._serialized_end=889
+  _globals['_FILESTATUSRESPONSE']._serialized_start=891
+  _globals['_FILESTATUSRESPONSE']._serialized_end=933
+  _globals['_STREAMURL']._serialized_start=935
+  _globals['_STREAMURL']._serialized_end=993
+  _globals['_HLSSTATUSRESPONSE']._serialized_start=996
+  _globals['_HLSSTATUSRESPONSE']._serialized_end=1165
+  _globals['_CDNSERVICE']._serialized_start=1168
+  _globals['_CDNSERVICE']._serialized_end=1763
 # @@protoc_insertion_point(module_scope)

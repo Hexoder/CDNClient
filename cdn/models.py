@@ -1,10 +1,10 @@
 import uuid
 from pathlib import Path
+from types import MappingProxyType
 
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 
 from .client import CDNClient
 from .utils import InfiniteInt, FileMaxedOutError
@@ -27,17 +27,29 @@ class FileAssociationMixin(models.Model):
 class SingleFileAssociationMixin(FileAssociationMixin):
     file = models.UUIDField(null=True, blank=True)
 
-    _original_file = None
-
     class Meta:
         abstract = True
 
+    # snapshot last-synced state on load (mirrors the multiple mixin)
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        instance._original_file = instance.file
+        return instance
+
+    @property
+    def file_detailed(self):
+        return self.client.get_file_metadata(str(self.file))
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._original_file = self.file
+        if not hasattr(self, '_original_file'):
+            self._original_file = self.file
 
     def has_file_changed(self):
-        return self.file != self._original_file
+        a = str(self.file) if self.file else None
+        b = str(self._original_file) if self._original_file else None
+        return a != b
 
     def is_file_filled(self):
         return bool(self.file)
@@ -51,73 +63,68 @@ class SingleFileAssociationMixin(FileAssociationMixin):
     def prepare_hls(self):
         return self.client.prepare_hls(uuid=str(self.file))
 
-    def handle_single_file_change(self, old_file: str, new_file: str):
+    def _sync_file_with_cdn(self, old_file, new_file):
 
         print(f"Single file changed from {old_file} to {new_file}")
-
         content_type = ContentType.objects.get_for_model(self)
 
-        try:
+        if old_file:
+            self._check_file_status(file_id=str(old_file))
+            self.client.unassign_from_instance(
+                uuid=str(old_file),
+                content_type_id=content_type.id,
+                object_id=self.id,
+            )
 
-            if old_file:
-                print(f"Deleting old file {old_file} from CDN")
-                self._check_file_status(file_id=str(old_file))
-                self.client.unassign_from_instance(
-                    uuid=str(old_file),
-                    content_type_id=content_type.id,
-                    object_id=self.id)
+        if new_file:
+            self._check_file_status(file_id=str(new_file))
+            self.client.assign_to_instance(
+                uuid=str(new_file),
+                content_type_id=content_type.id,
+                object_id=self.id,
+            )
 
-            if new_file:
-                print(f"Fetching new file {new_file} from CDN")
-                self._check_file_status(file_id=str(new_file))
-                self.client.assign_to_instance(uuid=str(new_file),
-                                               content_type_id=content_type.id,
-                                               object_id=self.id)
-
-            self._original_file = self.file
-        except Exception as err:
-            self.file = self._original_file
-            print(f"file update unsuccessful, err: {err}")
+        self._original_file = self.file
 
     def save(self, *args, **kwargs):
-        if self.has_file_changed():
-            self.handle_single_file_change(self._original_file, self.file)
-        if not self.pk:
+        is_new = self._state.adding
+        with transaction.atomic():
             super().save(*args, **kwargs)
-            if self.file:
-                self.handle_single_file_change("", self.file)
-        else:
-            super().save(*args, **kwargs)
+            if is_new:
+                if self.file:
+                    self._sync_file_with_cdn(None, self.file)
+            elif self.has_file_changed():
+                self._sync_file_with_cdn(self._original_file, self.file)
 
     def set_file(self, cdn_file_uuid):
         self.file = cdn_file_uuid
-        SingleFileAssociationMixin.save(self)
+        self.save()
 
     def remove_file(self):
         self.file = None
-        SingleFileAssociationMixin.save(self)
+        self.save()
 
     def get_file_metadata(self):
+        if not self.file:
+            return None
         return self.client.get_file_metadata(str(self.file))
 
-    def get_file(self, output_path: Path = None) -> str:
+    def get_file(self, output_dir: Path = None) -> str:
+        if not self.file:
+            return None
         file_name = self.get_file_metadata().get("file_name")
-        if output_path:
-            output_path = output_path / self.name
-        result = self.client.download_file(str(self.file), output_file_path=output_path, file_name=file_name)
-        return result
+        return self.client.download_file(
+            str(self.file), output_dir=output_dir, file_name=file_name
+        )
 
     def file_url(self, base_url):
-        if self.file:
-            if file_data := self.get_file_metadata():
-                return base_url + file_data["file_url"]
+        if self.file and (file_data := self.get_file_metadata()):
+            return base_url + file_data["file_url"]
         return None
 
 
 class MultipleFileAssociationMixin(FileAssociationMixin):
-    files = models.JSONField(default=list, blank=True)
-    files_local_ids = models.JSONField(default=dict, blank=True)
-    last_assigned_id = models.PositiveIntegerField(null=True, blank=True)
+    _files = models.JSONField(default=dict, blank=True)
 
     _original_files = None
     _max_allowed_files: int | InfiniteInt = InfiniteInt()
@@ -125,144 +132,125 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
     class Meta:
         abstract = True
 
+    @property
+    def files(self):
+        # read-only view: model.files["main"] works, model.files["main"] = x raises
+        return MappingProxyType(self._files)
+
+    @property
+    def files_detailed(self):
+        keys = self.files.keys()
+        values = map(lambda u: self.client.get_file_metadata(str(u)), self.files.values())
+        return dict(zip(keys, values))
+
+    # snapshot the last-synced state on load
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        instance._original_files = dict(instance._files or {})
+        return instance
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._original_files = list(self.files) if self.files else []
-
-    def _get_last_assigned_local_id(self) -> int:
-        return self.last_assigned_id if self.last_assigned_id else 0
-
-    def _get_local_id_by_cdnfileid(self, cdn_file_id: uuid.UUID) -> int | None:
-        for key, value in self.files_local_ids.items():
-            if value == cdn_file_id:
-                return int(key)
-        return None
-
-    def _get_cdnfileid_by_local_id(self, local_id: int) -> uuid.UUID | None:
-        return self.files_local_ids.get(str(local_id), None)
-
-    def _get_next_local_id(self) -> int:
-        return self._get_last_assigned_local_id() + 1
-
-    def _assign_local_id(self, cdn_file_id: uuid.uuid4, new_local_id: int) -> None:
-
-        self.files_local_ids[str(new_local_id)] = cdn_file_id
-        self.last_assigned_id = new_local_id
-
-    def _delete_local_id(self, local_id: int) -> None:
-        del self.files_local_ids[str(local_id)]
+        if self._original_files is None:
+            self._original_files = dict(self._files or {})
 
     def has_files_changed(self):
-        """Compare the original files with the current files."""
-        return self.files != self._original_files
+        return dict(self._original_files or {}) != dict(self.files or {})
 
-    def are_files_filled(self):
-        """Check if there are any files."""
-        return bool(self.files)
+    def _get_cdnfileid_by_local_key(self, local_key):
+        return self._files.get(local_key)
 
-    def hls_status(self, *, uuid=None, local_id=None):
-        uuid = uuid or self._get_cdnfileid_by_local_id(local_id)
+    def hls_status(self, *, uuid=None, local_key=None):
+        uuid = uuid or self._get_cdnfileid_by_local_key(local_key)
         if not uuid:
             return "required at least one arg <uuid , local_id>"
         return self.client.hls_status(uuid=str(uuid))
 
-    def hls_url(self, *, uuid=None, local_id=None):
-        uuid = uuid or self._get_cdnfileid_by_local_id(local_id)
+    def hls_url(self, *, uuid=None, local_key=None):
+        uuid = uuid or self._get_cdnfileid_by_local_key(local_key)
         if not uuid:
             return None
         return self.client.hls_url(uuid=str(uuid))
 
-    def prepare_hls(self, uuid=None, local_id=None):
-        uuid = uuid or self._get_cdnfileid_by_local_id(local_id)
+    def prepare_hls(self, uuid=None, local_key=None):
+        uuid = uuid or self._get_cdnfileid_by_local_key(local_key)
         if not uuid:
             return None
         return self.client.prepare_hls(uuid=str(uuid))
 
-    def handle_multiple_files_change(self, old_files, new_files):
-        """Handle file changes: additions and removals."""
-
+    def _sync_files_with_cdn(self, old_files, new_files):
+        """Assign/unassign CDN files based on (local_key -> uuid) diffs."""
         content_type = ContentType.objects.get_for_model(self)
+        old = old_files or {}
+        new = new_files or {}
 
-        old_set = set(old_files or [])
-        new_set = set(new_files or [])
+        to_unassign = {k: v for k, v in old.items() if new.get(k) != v and v}
+        to_assign = {k: v for k, v in new.items() if old.get(k) != v and v}
 
-        removed = old_set - new_set
-        added = new_set - old_set
+        print(f"Unassigning: {to_unassign}")
+        print(f"Assigning:   {to_assign}")
 
-        # Print out what was added and removed
-        print(f"Files removed: {removed}")
-        print(f"Files added: {added}")
+        for local_key, cdn_uuid in to_unassign.items():
+            self._check_file_status(file_id=str(cdn_uuid))
+            self.client.unassign_from_instance(
+                uuid=str(cdn_uuid),
+                content_type_id=content_type.id,
+                object_id=self.id,
+                local_key=local_key,
+            )
 
-        try:
-            for file in removed:
-                print(f"Deleting removed file {file} from CDN")
-                self._check_file_status(file_id=str(file))
-                old_local_id = self._get_local_id_by_cdnfileid(file)
-                self.client.unassign_from_instance(
-                    uuid=str(file),
-                    content_type_id=content_type.id,
-                    object_id=self.id,
-                    local_id=old_local_id)
-                self._delete_local_id(old_local_id)
+        for local_key, cdn_uuid in to_assign.items():
+            self._check_file_status(file_id=str(cdn_uuid))
+            self.client.assign_to_instance(
+                uuid=str(cdn_uuid),
+                content_type_id=content_type.id,
+                object_id=self.id,
+                local_key=local_key,
+            )
 
-            for file in added:
-                print(f"Fetching added file {file} from CDN")
-                self._check_file_status(file_id=str(file))
-                new_local_id = self._get_next_local_id()
-                self.client.assign_to_instance(uuid=str(file),
-                                               content_type_id=content_type.id,
-                                               object_id=self.id,
-                                               local_id=new_local_id)
-                self._assign_local_id(file, new_local_id)
-
-            self._original_files = list(self.files) if self.files else []
-
-        except Exception as err:
-            self.files = self._original_files
-            print(f"file update unsuccessful, err: {err}")
+        self._original_files = dict(new)
 
     def validate_unique(self, exclude=None):
         super().validate_unique(exclude)
-        if len(self.files) != len(set(self.files)):
-            self.files = list(set(self.files))
-            raise ValidationError("Files must be unique. Duplicate files found.")
+        values = list(self.files.values())
+        if len(values) != len(set(values)):
+            raise ValidationError(
+                "The same CDN file is assigned to multiple keys."
+            )
 
     def save(self, *args, **kwargs):
-
         self.full_clean()
-        if self.has_files_changed():
-            self.handle_multiple_files_change(self._original_files, self.files)
-        if not self.pk:
-            super().save(*args, **kwargs)
-            if self.files:
-                self.handle_multiple_files_change({}, self.files)
-        else:
-            super().save(*args, **kwargs)
+        is_new = self._state.adding  # capture BEFORE super().save()
+        with transaction.atomic():
+            super().save(*args, **kwargs)  # save first so self.id exists
+            if is_new:
+                self._sync_files_with_cdn({}, dict(self.files))
+            elif self.has_files_changed():
+                self._sync_files_with_cdn(self._original_files, dict(self.files))
 
-    def add_file(self, cdn_file_uuid):
-        if not len(self.files) < self._max_allowed_files:
+    def add_file(self, cdn_file_uuid, local_key, replace=False):
+        # only a NEW key grows the count; replacing an existing one doesn't
+        if local_key not in self.files and len(self.files) >= self._max_allowed_files:
             raise FileMaxedOutError(self._max_allowed_files)
-        self.files.append(cdn_file_uuid)
+        if local_key in self.files and not replace:
+            raise FileExistsError(local_key)
+        self._files[local_key] = str(cdn_file_uuid)  # note: _files, not files
         self.save()
 
-    def remove_file(self, local_file_id: int):
-        cdn_file_uuid = self._get_cdnfileid_by_local_id(local_file_id)
-        self._remove_file(cdn_file_uuid)
-
-    def _remove_file(self, cdn_file_uuid: uuid.UUID):
-        self.files.pop(self.files.index(cdn_file_uuid))
+    def remove_file(self, local_key):
+        del self._files[local_key]  # note: _files, not files
         self.save()
 
-    def get_file_metadata(self, cdn_file_id: uuid.UUID = None, local_file_id: int = None):
-        if local_file_id and not cdn_file_id:
-            cdn_file_id = self._get_cdnfileid_by_local_id(local_file_id)
+    def get_file_metadata(self, cdn_file_id=None, local_key=None):
+        if local_key is not None and not cdn_file_id:
+            cdn_file_id = self.files[local_key]
         return self.client.get_file_metadata(str(cdn_file_id))
 
-    def get_file(self, cdn_file_id: uuid.UUID = None, local_file_id: int = None, output_path: Path = None) -> str:
-        file_name = self.get_file_metadata(cdn_file_id=cdn_file_id, local_file_id=local_file_id).get("file_name")
+    def get_file(self, cdn_file_id: uuid.UUID = None, local_key: int = None, output_dir: Path = None) -> str:
+        file_name = self.get_file_metadata(cdn_file_id=cdn_file_id, local_key=local_key).get("file_name")
         if not cdn_file_id:
-            cdn_file_id = self._get_cdnfileid_by_local_id(local_file_id)
-        if output_path:
-            output_path = output_path / self.name
-        result = self.client.download_file(str(cdn_file_id), output_file_path=output_path, file_name=file_name)
+            cdn_file_id = self._get_cdnfileid_by_local_key(local_key)
+
+        result = self.client.download_file(str(cdn_file_id), output_dir=output_dir, file_name=file_name)
         return result
