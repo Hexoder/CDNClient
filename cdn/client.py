@@ -110,8 +110,10 @@ class CDNClient:
         return MessageToDict(result, preserving_proto_field_name=True)
 
     @cdn_cache(_get_last_temp, _update_temp_path)
-    def download_file(self, uuid: str, output_file_path: str = None, file_name: str = None) -> str:
+    def download_file(self, uuid: str, output_file_path: str = None) -> str:
         request = cdn_pb2.FileRequest(uuid=uuid)
+        file_data = self.get_file_metadata(uuid)
+        file_name = file_data.get('file_name')
 
         if not output_file_path:
             with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file_name}") as temp_file:
@@ -130,15 +132,15 @@ class CDNClient:
                     raise
 
         else:
-            path = Path(output_file_path)
+            path = Path(output_file_path) / file_name
             if path.exists():
-                print(f"File already exists: {path}")
-            with open(output_file_path, 'wb') as f:
+                print(f"File already exists: {path} , replacing...")
+            with open(path, 'wb') as f:
 
                 for chunk in self.stub.GetFileContent(request):
                     f.write(chunk.file_content)
-            print(f"File downloaded to {output_file_path}")
-            return output_file_path
+            print(f"File downloaded to {path}")
+            return path
 
     def check_file_status(self, uuid: str) -> dict:
         request = cdn_pb2.FileRequest(uuid=uuid)
@@ -177,14 +179,35 @@ class CDNClient:
         result = self.stub.UnassignFromInstance(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
-    def upload_file(self, file: bytes, file_name: str, requested_user_id=0, chunk_size: int = 1024 * 1024) -> dict:
+    def upload_file(self, file: bytes,
+                    file_name: str,
+                    metadata={"alt": ""},
+                    is_public: bool = False,
+                    accessed_users=None,
+                    requested_user_id=0,
+                    chunk_size: int = 1024 * 1024) -> dict:
+
+        if accessed_users is None:
+            accessed_users = []
+
+        metadata = cdn_pb2.FileMetadata(
+            **metadata
+        )
+        breakpoint()
+
         def chunk_generator():
             # Send metadata in the first chunk
             first = True
             for i in range(0, len(file), chunk_size):
                 chunk = file[i:i + chunk_size]
                 if first:
-                    yield cdn_pb2.FileChunk(data=chunk, file_name=file_name, user_id=requested_user_id)
+                    # CHANGE TO FILEMETADATA
+                    yield cdn_pb2.FileChunk(data=chunk,
+                                            file_name=file_name,
+                                            metadata=metadata,
+                                            is_public=is_public,
+                                            accessed_users=accessed_users,
+                                            user_id=requested_user_id)
                     first = False
                 else:
                     yield cdn_pb2.FileChunk(data=chunk)
