@@ -60,12 +60,13 @@ class FileSerializerMixin:
     def _serialize_multiple_files(self, file_map: dict):
         if not file_map:
             return {}
-        results = {}
+        results = []
         for local_key, cdn_uuid in file_map.items():
             try:
                 metadata = client.get_file_metadata(str(cdn_uuid))
                 if metadata:
-                    results[str(local_key)] = metadata
+                    metadata['local_key'] = str(local_key)
+                    results.append(metadata)
             except Exception as err:
                 print(err)
         return results
