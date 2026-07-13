@@ -77,13 +77,6 @@ class AddFileSerializer(serializers.Serializer):
     local_key = serializers.CharField(required=False)
     replace = serializers.BooleanField(required=False, default=False)
 
-    def validate(self, attrs):
-        if self.context.get('is_multiple') and not attrs.get('local_key'):
-            raise serializers.ValidationError(
-                {"local_key": "This field is required for multi-file objects."}
-            )
-        return attrs
-
     def save(self, instance):
         data = self.validated_data
         try:

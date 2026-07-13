@@ -1,3 +1,4 @@
+import random
 import uuid
 from pathlib import Path
 from types import MappingProxyType
@@ -229,17 +230,39 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
             elif self.has_files_changed():
                 self._sync_files_with_cdn(self._original_files, dict(self.files))
 
-    def add_file(self, cdn_file_uuid, local_key, replace=False):
+    def add_file(self, cdn_file_uuid, local_key=None, replace=False):
         # only a NEW key grows the count; replacing an existing one doesn't
         if local_key not in self.files and len(self.files) >= self._max_allowed_files:
             raise FileMaxedOutError(self._max_allowed_files)
         if local_key in self.files and not replace:
             raise FileExistsError(local_key)
-        self._files[local_key] = str(cdn_file_uuid)  # note: _files, not files
+
+        def gen_local_key():
+            basename = self.__name__
+            rand_num = random.randint(0, 100000)
+            key = f'{basename}-{rand_num}'
+            if key in self.files:
+                gen_local_key()
+            return key
+
+        if not local_key:
+            local_key = gen_local_key()
+
+        self._files[local_key] = str(cdn_file_uuid)
         self.save()
 
     def remove_file(self, local_key):
-        del self._files[local_key]  # note: _files, not files
+        del self._files[local_key]
+        self.save()
+
+    def swap_files(self, local_key1, local_key2):
+        self._files[local_key1], self._files[local_key2] = self._files[local_key2], self._files[local_key1]
+        self.save()
+
+    def change_key(self, old_key, new_key):
+        file_uuid = self._files[old_key]
+        del self._files[old_key]
+        self._files[new_key] = file_uuid
         self.save()
 
     def get_file_metadata(self, cdn_file_id=None, local_key=None):

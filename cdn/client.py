@@ -193,7 +193,6 @@ class CDNClient:
         metadata = cdn_pb2.FileMetadata(
             **metadata
         )
-        breakpoint()
 
         def chunk_generator():
             # Send metadata in the first chunk
@@ -216,11 +215,14 @@ class CDNClient:
         return MessageToDict(result)
 
     def filter_file(self, user_id: int = None,
-                    uuid_list: list[str] = None):
+                    uuid_list: list[str] = None, is_public: bool | None = None):
         request = cdn_pb2.FilterFileRequest(
             user_id=user_id,
             uuid_list=uuid_list
         )
+        if is_public is not None:
+            request.is_public = is_public
+
         result = self.stub.FilterFile(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 

@@ -22,4 +22,4 @@ class FileMaxedOutError(Exception):
         self.max_file_count = max_file_count
 
     def __str__(self):
-        return f"file lenght maxed out reached, allowd file count: {self.max_file_count}"
+        return f"file length maxed out reached, allowed file count: {self.max_file_count}"
