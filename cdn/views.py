@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import MultipleFileAssociationMixin
-from .serializers import AddFileSerializer
+from .serializers import AddFileSerializer, SwapFileSerializer, ChangeFileKeySerializer
 
 
 class FilesViewSetMixin:
@@ -42,3 +42,35 @@ class FilesViewSetMixin:
         except (KeyError, FileNotFoundError):
             return Response({"error": f"No file '{local_key}' found."},
                             status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['post'])
+    def swap_files(self, request, *args, **kwargs):
+        """Swap a file from the associated object."""
+        if self._is_multiple():
+            return Response({"error": f"Method not available for multiple file objects"},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        instance = self.get_object()
+        serializer = SwapFileSerializer(
+            data=request.data,
+        )
+        if serializer.is_valid(raise_exception=True):
+            result = serializer.save(instance=instance)
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def change_key(self, request, *args, **kwargs):
+        """Swap a file from the associated object."""
+        if self._is_multiple():
+            return Response({"error": f"Method not available for multiple file objects"},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        instance = self.get_object()
+        serializer = ChangeFileKeySerializer(
+            data=request.data,
+        )
+        if serializer.is_valid(raise_exception=True):
+            result = serializer.save(instance=instance)
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

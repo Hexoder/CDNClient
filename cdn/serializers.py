@@ -97,3 +97,40 @@ class AddFileSerializer(serializers.Serializer):
             raise serializers.ValidationError({"detail": str(err)})
 
         return {"detail": f"File {data['uuid']} added successfully."}
+
+
+class SwapFileSerializer(serializers.Serializer):
+    local_key1 = serializers.CharField(required=True)
+    local_key2 = serializers.CharField(required=True)
+
+    def save(self, instance):
+        data = self.validated_data
+        local_key1 = data['local_key1']
+        local_key2 = data['local_key2']
+        try:
+            instance.swap_files(local_key1=local_key1, local_key2=local_key2)
+
+        except Exception as err:
+            raise serializers.ValidationError(
+                str(err)
+            )
+
+        return {"detail": f"File {local_key1} successfully swapped with {local_key2}."}
+
+
+class ChangeFileKeySerializer(serializers.Serializer):
+    old_key = serializers.CharField(required=True)
+    new_key = serializers.CharField(required=True)
+
+    def save(self, instance):
+        data = self.validated_data
+        old_key = data['old_key']
+        new_key = data['new_key']
+        try:
+            instance.change_file_key(old_key=old_key, new_key=new_key)
+
+        except Exception as err:
+            raise serializers.ValidationError(
+                str(err)
+            )
+        return {"detail": f"File {old_key} successfully changed to {new_key}."}
