@@ -238,7 +238,7 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
             raise FileExistsError(local_key)
 
         def gen_local_key():
-            basename = self.__name__
+            basename = self.__class__.__name__.lower()
             rand_num = random.randint(0, 100000)
             key = f'{basename}-{rand_num}'
             if key in self.files:
