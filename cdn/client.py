@@ -10,6 +10,22 @@ from google.protobuf.json_format import MessageToDict
 from .decorators import cdn_cache
 from .proto import cdn_pb2, cdn_pb2_grpc
 
+APP_NAME = getattr(settings, "APP_NAME", "cdn")
+
+
+def get_secure_channel(server_domain):
+    cert_path = f'cdnservice_{APP_NAME}.pem'
+
+    # Load server certificate
+    with open(cert_path, "rb") as f:
+        trusted_certs = f.read()
+
+    # Create SSL/TLS credentials
+    credentials = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
+
+    # Create a secure channel
+    return grpc.secure_channel(server_domain, credentials)
+
 
 def try_except(func):
     def wrapper(*args, **kwargs):
@@ -52,8 +68,8 @@ class CDNClient:
                 except KeyError:
                     raise Exception("setup new redis cache named cdn [with desired redis db] ")
 
-                # cls._instance.channel = get_secure_channel(server_address)
-                cls._instance.channel = grpc.insecure_channel(cls._conn_address)
+                cls._instance.channel = get_secure_channel(server_address)
+                # cls._instance.channel = grpc.insecure_channel(cls._conn_address)
 
                 cls._instance.stub = cdn_pb2_grpc.CDNServiceStub(cls._instance.channel)
 
@@ -190,17 +206,12 @@ class CDNClient:
         if accessed_users is None:
             accessed_users = []
 
-        metadata = cdn_pb2.FileMetadata(
-            **metadata
-        )
-
         def chunk_generator():
             # Send metadata in the first chunk
             first = True
             for i in range(0, len(file), chunk_size):
                 chunk = file[i:i + chunk_size]
                 if first:
-                    # CHANGE TO FILEMETADATA
                     yield cdn_pb2.FileChunk(data=chunk,
                                             file_name=file_name,
                                             metadata=metadata,
