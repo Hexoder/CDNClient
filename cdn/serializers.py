@@ -79,11 +79,12 @@ class AddFileSerializer(serializers.Serializer):
 
     def save(self, instance):
         data = self.validated_data
+        local_key = data.get('local_key', None)
         try:
             if self.context.get('is_multiple'):
                 instance.add_file(
                     cdn_file_uuid=str(data['uuid']),
-                    local_key=data['local_key'],
+                    local_key=local_key,
                     replace=data.get('replace', False),
                 )
             else:

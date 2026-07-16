@@ -232,9 +232,9 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
 
     def add_file(self, cdn_file_uuid, local_key=None, replace=False):
         # only a NEW key grows the count; replacing an existing one doesn't
-        if local_key not in self.files and len(self.files) >= self._max_allowed_files:
+        if local_key and local_key not in self.files and len(self.files) >= self._max_allowed_files:
             raise FileMaxedOutError(self._max_allowed_files)
-        if local_key in self.files and not replace:
+        if local_key and local_key in self.files and not replace:
             raise FileExistsError(local_key)
 
         def gen_local_key():
