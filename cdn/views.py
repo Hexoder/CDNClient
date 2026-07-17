@@ -19,11 +19,13 @@ class FilesViewSetMixin:
 
         serializer = AddFileSerializer(
             data=request.data,
-            context={'is_multiple': self._is_multiple()},
+            context={'is_multiple': self._is_multiple(), 'instance': instance},
         )
-        serializer.is_valid(raise_exception=True)
-        result = serializer.save(instance=instance)
-        return Response(result, status=status.HTTP_200_OK)
+
+        if serializer.is_valid(raise_exception=True):
+            result = serializer.save()
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['delete'])
     def delete_file(self, request, *args, **kwargs):

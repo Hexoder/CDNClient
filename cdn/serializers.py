@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from .client import CDNClient
 from .models import SingleFileAssociationMixin, MultipleFileAssociationMixin
-from .utils import FileMaxedOutError
 
 client = CDNClient()
 
@@ -77,25 +76,43 @@ class AddFileSerializer(serializers.Serializer):
     local_key = serializers.CharField(required=False)
     replace = serializers.BooleanField(required=False, default=False)
 
-    def save(self, instance):
+    def validate(self, attrs):
+        instance = self.context["instance"]
+        local_key = attrs.get("local_key")
+        replace = attrs.get("replace", False)
+        cdn_file_uuid = attrs.get('uuid')
+
+        if self.context.get("is_multiple") and not replace:
+            if instance.files.get(local_key):
+                raise serializers.ValidationError({
+                    "local_key": (
+                        f"'{local_key}' already has a file. "
+                        "Pass replace=true to overwrite."
+                    )
+                })
+            local_key = instance._get_local_key_by_cdn_uuid(str(cdn_file_uuid))
+            if local_key:
+                raise serializers.ValidationError({
+                    "uuid": (
+                        f"file with uuid '{cdn_file_uuid}' already assigned to key '{local_key}' "
+                        "Pass replace=true to overwrite."
+                    )
+                })
+
+        return attrs
+
+    def save(self):
         data = self.validated_data
-        local_key = data.get('local_key', None)
-        try:
-            if self.context.get('is_multiple'):
-                instance.add_file(
-                    cdn_file_uuid=str(data['uuid']),
-                    local_key=local_key,
-                    replace=data.get('replace', False),
-                )
-            else:
-                instance.set_file(cdn_file_uuid=str(data['uuid']))
-        except FileExistsError:
-            raise serializers.ValidationError(
-                {"local_key": f"'{data.get('local_key')}' already has a file. "
-                              f"Pass replace=true to overwrite."}
+        instance = self.context["instance"]
+
+        if self.context.get("is_multiple"):
+            instance.add_file(
+                cdn_file_uuid=str(data["uuid"]),
+                local_key=data.get("local_key"),
+                replace=data.get("replace", False),
             )
-        except FileMaxedOutError as err:
-            raise serializers.ValidationError({"detail": str(err)})
+        else:
+            instance.set_file(cdn_file_uuid=str(data["uuid"]))
 
         return {"detail": f"File {data['uuid']} added successfully."}
 

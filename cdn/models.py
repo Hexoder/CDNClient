@@ -162,6 +162,12 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
     def _get_cdnfileid_by_local_key(self, local_key):
         return self._files.get(local_key)
 
+    def _get_local_key_by_cdn_uuid(self, cdn_uuid):
+        for local_key, file_id in self._original_files.items():
+            if file_id == cdn_uuid:
+                return local_key
+        return None
+
     def hls_status(self, *, uuid=None, local_key=None):
         uuid = uuid or self._get_cdnfileid_by_local_key(local_key)
         if not uuid:
@@ -214,14 +220,14 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
 
     def validate_unique(self, exclude=None):
         super().validate_unique(exclude)
-        values = list(self.files.values())
+        values = list(self._files.values())
         if len(values) != len(set(values)):
             raise ValidationError(
                 "The same CDN file is assigned to multiple keys."
             )
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.full_clean(exclude=kwargs.pop("exclude", []))
         is_new = self._state.adding  # capture BEFORE super().save()
         with transaction.atomic():
             super().save(*args, **kwargs)  # save first so self.id exists
@@ -244,6 +250,10 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
             if key in self.files:
                 gen_local_key()
             return key
+
+        existing_key = self._get_local_key_by_cdn_uuid(cdn_file_uuid)
+        if existing_key and replace:
+            del self._files[existing_key]
 
         if not local_key:
             local_key = gen_local_key()
