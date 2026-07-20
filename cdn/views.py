@@ -27,23 +27,34 @@ class FilesViewSetMixin:
             return Response(result, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['delete'])
+    @action(
+        detail=True,
+        methods=['delete'],
+        url_path=r'delete_file/(?P<local_key>[^/.]+)'
+    )
     def delete_file(self, request, *args, **kwargs):
         """Delete a file from the associated object."""
         instance = self.get_object()
-        local_key = request.query_params.get('local_key', None)
+        local_key = kwargs.get('local_key')
+
         try:
             if self._is_multiple():
                 if not local_key:
-                    return Response({"detail": "local_key query param is required for multiple file objects"},
-                                    status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        {"detail": "local_key path parameter is required for multiple file objects"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
                 instance.remove_file(local_key=local_key)
             else:
                 instance.remove_file()
+
             return Response(status=status.HTTP_204_NO_CONTENT)
+
         except (KeyError, FileNotFoundError):
-            return Response({"error": f"No file '{local_key}' found."},
-                            status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": f"No file '{local_key}' found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
     @action(detail=True, methods=['post'])
     def swap_files(self, request, *args, **kwargs):

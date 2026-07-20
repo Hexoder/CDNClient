@@ -51,6 +51,10 @@ class CDNClient:
     _cache_timeout = 60 * 60 * 24  # 24 hours default cache timeout
 
     def __new__(cls):
+        installed_apps = getattr(settings, "INSTALLED_APPS")
+        if 'cdn' not in installed_apps:
+            return super(CDNClient, cls).__new__(cls)
+
         server_address = getattr(settings, "CDN_GRPC_ADDRESS")
 
         if not server_address:
