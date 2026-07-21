@@ -218,13 +218,14 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
 
         self._original_files = dict(new)
 
-    def validate_unique(self, exclude=None):
-        super().validate_unique(exclude)
-        values = list(self._files.values())
-        if len(values) != len(set(values)):
-            raise ValidationError(
-                "The same CDN file is assigned to multiple keys."
-            )
+    # TODO DEPRECATED, REMOVE IN NEXT VERSION
+    # def validate_unique(self, exclude=None):
+    #     super().validate_unique(exclude)
+    #     values = list(self._files.values())
+    #     if len(values) != len(set(values)):
+    #         raise ValidationError(
+    #             "The same CDN file is assigned to multiple keys."
+    #         )
 
     def save(self, *args, **kwargs):
         self.full_clean(exclude=kwargs.pop("exclude", []))
