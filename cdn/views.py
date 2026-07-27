@@ -30,7 +30,7 @@ class FilesViewSetMixin:
     @action(
         detail=True,
         methods=['delete'],
-        url_path=r'delete_file/(?P<local_key>[^/.]+)'
+        url_path=r'delete_file(?:/(?P<local_key>[^/.]+))?'
     )
     def delete_file(self, request, *args, **kwargs):
         """Delete a file from the associated object."""
