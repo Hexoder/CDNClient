@@ -114,7 +114,8 @@ class AddFileSerializer(serializers.Serializer):
         else:
             instance.set_file(cdn_file_uuid=str(data["uuid"]))
 
-        return {"detail": f"File {data['uuid']} added successfully."}
+        serialized_data = FileSerializerMixin._serialize_single_file(self, data["uuid"])
+        return serialized_data
 
 
 class SwapFileSerializer(serializers.Serializer):
