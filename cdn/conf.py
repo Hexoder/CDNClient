@@ -90,7 +90,7 @@ QUEUE_NAME = setting("CDN_QUEUE_NAME",
 
 APP_NAME = setting("APP_NAME", typ=str, required=True, default='cdn', description='Application Name')
 
-GRPC_SECURE = setting("CDN_GRPC_SECURE", typ=bool_validator, required=False, default=False,
+GRPC_SECURE = setting("CDN_GRPC_SECURE", typ=bool_validator, required=False, default=True,
                       description='Security configuration',
                       validator=bool_validator)
 
