@@ -3,7 +3,6 @@ from email._header_value_parser import ContentType
 from channels.db import database_sync_to_async
 
 from cdn.client import CDNClient
-from cdn.models import SingleFileAssociationMixin, MultipleFileAssociationMixin
 
 client = CDNClient()
 
@@ -48,6 +47,7 @@ def remove_usages(usages):
         client._cdn_cache.delete(cache_key)
 
         try:
+            from cdn.models import SingleFileAssociationMixin, MultipleFileAssociationMixin
 
             # Get Content Object
             obj = ContentType.objects.get_for_id(content_type_id).get_object_for_this_type(
