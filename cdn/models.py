@@ -4,7 +4,6 @@ from pathlib import Path
 from types import MappingProxyType
 
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
 from django.db import models, transaction
 
 from .client import CDNClient
@@ -21,8 +20,9 @@ class FileAssociationMixin(models.Model):
 
     def _check_file_status(self, file_id: str):
         result = self.client.check_file_status(uuid=file_id)
-        if not result["is_available"]:
-            raise Exception("File Not Found!")
+        if is_available := result.get('is_available', None):
+            return
+        raise Exception("File Not Found!")
 
 
 class SingleFileAssociationMixin(FileAssociationMixin):
@@ -87,10 +87,11 @@ class SingleFileAssociationMixin(FileAssociationMixin):
 
         self._original_file = self.file
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, skip_sync=False, **kwargs):
         is_new = self._state.adding
         with transaction.atomic():
             super().save(*args, **kwargs)
+            if skip_sync: return
             if is_new:
                 if self.file:
                     self._sync_file_with_cdn(None, self.file)
@@ -227,11 +228,12 @@ class MultipleFileAssociationMixin(FileAssociationMixin):
     #             "The same CDN file is assigned to multiple keys."
     #         )
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, skip_sync=False, **kwargs):
         self.full_clean(exclude=kwargs.pop("exclude", []))
         is_new = self._state.adding  # capture BEFORE super().save()
         with transaction.atomic():
             super().save(*args, **kwargs)  # save first so self.id exists
+            if skip_sync: return
             if is_new:
                 self._sync_files_with_cdn({}, dict(self.files))
             elif self.has_files_changed():

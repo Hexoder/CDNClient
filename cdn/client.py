@@ -7,10 +7,9 @@ from django.conf import settings
 from django.core.cache import caches
 from google.protobuf.json_format import MessageToDict
 
+from cdn.conf import APP_NAME, SERVER_ADDRESS, GRPC_SECURE
 from .decorators import cdn_cache
 from .proto import cdn_pb2, cdn_pb2_grpc
-
-APP_NAME = getattr(settings, "APP_NAME", "cdn")
 
 
 def get_secure_channel(server_domain):
@@ -25,6 +24,10 @@ def get_secure_channel(server_domain):
 
     # Create a secure channel
     return grpc.secure_channel(server_domain, credentials)
+
+
+def get_insecure_channel(server_domain):
+    return grpc.insecure_channel(server_domain)
 
 
 def try_except(func):
@@ -55,12 +58,10 @@ class CDNClient:
         if 'cdn' not in installed_apps:
             return super(CDNClient, cls).__new__(cls)
 
-        server_address = getattr(settings, "CDN_GRPC_ADDRESS")
-
-        if not server_address:
+        if not SERVER_ADDRESS:
             raise Exception("set CDN_GRPC_ADDRESS in django settings (CDN_GRPC_ADDRESS='localhost:50051')")
 
-        cls._conn_address = server_address
+        cls._conn_address = SERVER_ADDRESS
 
         with cls._lock:
             if cls._instance is None:
@@ -72,8 +73,9 @@ class CDNClient:
                 except KeyError:
                     raise Exception("setup new redis cache named cdn [with desired redis db] ")
 
-                cls._instance.channel = get_secure_channel(server_address)
-                # cls._instance.channel = grpc.insecure_channel(cls._conn_address)
+                func = get_secure_channel if GRPC_SECURE else get_insecure_channel
+
+                cls._instance.channel = func(cls._conn_address)
 
                 cls._instance.stub = cdn_pb2_grpc.CDNServiceStub(cls._instance.channel)
 
@@ -171,7 +173,7 @@ class CDNClient:
                            content_type_id: int,
                            object_id: int,
                            requested_user_id: int | None = None,
-                           local_key: int | None = None) -> dict:
+                           local_key: str | None = None) -> dict:
 
         request = cdn_pb2.AssignUnassignRequest(
             uuid=uuid,
@@ -187,7 +189,7 @@ class CDNClient:
                                content_type_id: int,
                                object_id: int,
                                requested_user_id: int | None = None,
-                               local_key: int | None = None) -> dict:
+                               local_key: str | None = None) -> dict:
 
         request = cdn_pb2.AssignUnassignRequest(
             uuid=uuid,
@@ -197,6 +199,21 @@ class CDNClient:
             requested_user_id=requested_user_id)
 
         result = self.stub.UnassignFromInstance(request)
+        return MessageToDict(result, preserving_proto_field_name=True)
+
+    def clear_file_usage(self, file_id: str,
+                         content_type_id: int,
+                         object_id: int,
+                         requested_user_id: int | None = None,
+                         local_key: str | None = None) -> dict:
+        request = cdn_pb2.AssignUnassignRequest(
+            uuid=file_id,
+            content_type_id=content_type_id,
+            object_id=object_id,
+            local_key=local_key,
+            requested_user_id=requested_user_id)
+
+        result = self.stub.ClearFileUsage(request)
         return MessageToDict(result, preserving_proto_field_name=True)
 
     def upload_file(self, file: bytes,
