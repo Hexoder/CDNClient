@@ -11,6 +11,29 @@ from cdn.conf import APP_NAME, SERVER_ADDRESS, GRPC_SECURE
 from .decorators import cdn_cache
 from .proto import cdn_pb2, cdn_pb2_grpc
 
+GRPC_OPTIONS = [
+    ('grpc.keepalive_time_ms', 20000),
+    ('grpc.keepalive_timeout_ms', 10000),
+    ('grpc.keepalive_permit_without_calls', True),
+    ('grpc.http2.max_pings_without_data', 0),
+    ('grpc.max_send_message_length', 50 * 1024 * 1024),
+    ('grpc.max_receive_message_length', 50 * 1024 * 1024),
+    # This is the fix for your actual bug pattern: forces the channel to
+    # actively re-resolve/reconnect instead of silently sitting on a dead
+    # connection until something explicitly errors.
+    ('grpc.enable_retries', 1),
+    ('grpc.service_config', '{"methodConfig": [{'
+                            '"name": [{}], '
+                            '"retryPolicy": {'
+                            '"maxAttempts": 3, '
+                            '"initialBackoff": "0.2s", '
+                            '"maxBackoff": "2s", '
+                            '"backoffMultiplier": 2, '
+                            '"retryableStatusCodes": ["UNAVAILABLE"]'
+                            '}'
+                            '}]}'),
+]
+
 
 def get_secure_channel(server_domain):
     cert_path = f'cdnservice_{APP_NAME}.pem'
@@ -23,11 +46,11 @@ def get_secure_channel(server_domain):
     credentials = grpc.ssl_channel_credentials(root_certificates=trusted_certs)
 
     # Create a secure channel
-    return grpc.secure_channel(server_domain, credentials)
+    return grpc.secure_channel(server_domain, credentials, options=GRPC_OPTIONS)
 
 
 def get_insecure_channel(server_domain):
-    return grpc.insecure_channel(server_domain)
+    return grpc.insecure_channel(server_domain, options=GRPC_OPTIONS)
 
 
 def try_except(func):
